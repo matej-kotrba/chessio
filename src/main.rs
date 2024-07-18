@@ -20,7 +20,20 @@ impl Game {
             board: Board { tiles: tiles },
         }
     }
-    pub fn render() -> Self {}
+    pub fn render(&self, d: &mut RaylibDrawHandle) {
+        let size = WINDOW_WIDTH as usize / Board::SIZE;
+        for y in 0..Board::SIZE {
+            for x in 0..Board::SIZE {
+                d.draw_rectangle(
+                    (x * size) as i32,
+                    (y * size) as i32,
+                    size as i32,
+                    size as i32,
+                    self.board.tiles[y][x].color,
+                );
+            }
+        }
+    }
 }
 
 struct Board {
@@ -49,15 +62,20 @@ impl Tile {
 #[derive(Copy, Clone)]
 struct Piece {}
 
-fn main() {
-    let mut game = Game::new();
+const WINDOW_WIDTH: i32 = 800;
+const WINDOW_HEIGHT: i32 = 800;
 
-    let (mut rl, thread) = raylib::init().size(640, 480).title("Hello, World").build();
+fn main() {
+    let game = Game::new();
+
+    let (mut rl, thread) = raylib::init()
+        .size(WINDOW_WIDTH, WINDOW_HEIGHT)
+        .title("Chessio")
+        .build();
 
     while !rl.window_should_close() {
         let mut d = rl.begin_drawing(&thread);
 
-        d.clear_background(Color::WHITE);
-        d.draw_text("Hello, world!", 12, 12, 20, Color::BLACK);
+        game.render(&mut d);
     }
 }
