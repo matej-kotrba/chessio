@@ -153,10 +153,14 @@ impl Tile {
         pieces_images: &PiecesImagesType,
     ) {
         match self.piece {
-            Some(piece) => d.draw_texture(
+            Some(piece) => d.draw_texture_ex(
                 pieces_images.get(&(piece.kind, piece.side)).unwrap(),
-                x,
-                y,
+                Vector2 {
+                    x: x as f32,
+                    y: y as f32,
+                },
+                0.0,
+                1.0,
                 Color::WHITE,
             ),
             // Some(piece) => d.draw_text(&piece.to_string(), x, y, 18, Color::PURPLE),
@@ -223,8 +227,8 @@ enum Side {
     White,
 }
 
-const WINDOW_WIDTH: i32 = 800;
-const WINDOW_HEIGHT: i32 = 800;
+const WINDOW_WIDTH: i32 = 1000;
+const WINDOW_HEIGHT: i32 = 1000;
 
 fn main() {
     let (mut rl, thread) = raylib::init()
@@ -235,6 +239,10 @@ fn main() {
     let game = Game::new(&mut rl, &thread);
 
     while !rl.window_should_close() {
+        if rl.is_mouse_button_pressed(MouseButton::MOUSE_LEFT_BUTTON) {
+            println!("PRESSED");
+        }
+
         let mut d = rl.begin_drawing(&thread);
 
         game.render(&mut d);
@@ -244,8 +252,8 @@ fn main() {
                 game.tiles[y][x].render(
                     &mut d,
                     (
-                        x as i32 * (WINDOW_WIDTH / Game::SIZE as i32) + 10,
-                        y as i32 * (WINDOW_HEIGHT / Game::SIZE as i32) + 10,
+                        x as i32 * (WINDOW_WIDTH / Game::SIZE as i32),
+                        y as i32 * (WINDOW_HEIGHT / Game::SIZE as i32),
                     ),
                     &game.pieces_images,
                 )
