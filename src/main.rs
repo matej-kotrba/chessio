@@ -23,8 +23,6 @@ impl Game {
             }
         }
 
-        Image::load_image("./pieces/pngs/RookBlack.png").unwrap();
-
         let pieces_images: PiecesImagesType = HashMap::from([
             (
                 (PieceType::Rook, Side::Black),
