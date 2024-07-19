@@ -103,7 +103,7 @@ impl Game {
                     (y * size) as i32,
                     size as i32,
                     size as i32,
-                    self.tiles[y][x].color,
+                    self.tiles[y][x].bg.unwrap_or(self.tiles[y][x].color),
                 );
             }
         }
@@ -130,10 +130,28 @@ impl Game {
             self.tiles[Self::SIZE - 1][index].piece = Some(Piece::new(*piece, Side::White));
         }
     }
+    pub fn highlight_tile_by_position(&mut self, (x, y): (f32, f32)) {
+        let tileX = (x / (WINDOW_WIDTH as f32 / Self::SIZE as f32)) as i32;
+        let tileY = (y / (WINDOW_HEIGHT as f32 / Self::SIZE as f32)) as i32;
+
+        if tileX >= 0 && tileX < Self::SIZE as i32 && tileY >= 0 && tileY < Self::SIZE as i32 {
+            self.tiles[tileY as usize][tileX as usize].bg = Some(Color::RED);
+        }
+    }
+    pub fn tiles_iter(&mut self) -> TilesIter {
+        let iter = TilesIter {
+            index_x: 0,
+            index_y: 0,
+            tiles: &self.tiles,
+        };
+
+        return iter;
+    }
 }
 
 #[derive(Copy, Clone)]
 struct Tile {
+    pub bg: Option<Color>,
     color: Color,
     piece: Option<Piece>,
 }
@@ -142,6 +160,7 @@ impl Tile {
     pub fn new() -> Self {
         Tile {
             color: Color::BLACK,
+            bg: None,
             piece: None,
         }
     }
@@ -166,6 +185,63 @@ impl Tile {
             // Some(piece) => d.draw_text(&piece.to_string(), x, y, 18, Color::PURPLE),
             None => {}
         }
+    }
+    pub fn clear_bg(&mut self) {
+        self.bg = None;
+    }
+}
+
+struct TilesIter<'a> {
+    tiles: &'a [[Tile; Game::SIZE]; Game::SIZE],
+    index_y: usize,
+    index_x: usize,
+}
+
+impl<'a> Iterator for TilesIter<'a> {
+    type Item = (usize, usize, &'a Tile);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index_y >= Game::SIZE {
+            return None;
+        }
+
+        let tile = &self.tiles[self.index_y][self.index_x];
+        let tuple = (self.index_x, self.index_y, tile);
+
+        self.index_x += 1;
+        if self.index_x >= Game::SIZE {
+            self.index_x = 0;
+            self.index_y += 1;
+        }
+
+        return Some(tuple);
+    }
+}
+
+struct TilesIterMut<'a> {
+    tiles: &'a mut [[Tile; Game::SIZE]; Game::SIZE],
+    index_y: usize,
+    index_x: usize,
+}
+
+impl<'a> Iterator for TilesIterMut<'a> {
+    type Item = (usize, usize, &'a mut Tile);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index_y >= Game::SIZE {
+            return None;
+        }
+
+        let tile = &mut self.tiles[self.index_y][self.index_x];
+        let tuple = (self.index_x, self.index_y, tile);
+
+        self.index_x += 1;
+        if self.index_x >= Game::SIZE {
+            self.index_x = 0;
+            self.index_y += 1;
+        }
+
+        return Some(tuple);
     }
 }
 
@@ -236,12 +312,23 @@ fn main() {
         .title("Chessio")
         .build();
 
-    let game = Game::new(&mut rl, &thread);
+    let mut game = Game::new(&mut rl, &thread);
 
     while !rl.window_should_close() {
-        if rl.is_mouse_button_pressed(MouseButton::MOUSE_LEFT_BUTTON) {
-            println!("PRESSED");
+        // if rl.is_mouse_button_pressed(MouseButton::MOUSE_LEFT_BUTTON) {
+        //     println!("PRESSED");
+        // }
+
+        for (x, y, tile) in game.tiles_iter() {
+            println!("{x}, {y}");
         }
+
+        let Vector2 {
+            x: mouse_x,
+            y: mouse_y,
+        } = rl.get_mouse_position();
+
+        game.highlight_tile_by_position((mouse_x, mouse_y));
 
         let mut d = rl.begin_drawing(&thread);
 
