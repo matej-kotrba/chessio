@@ -1,13 +1,18 @@
+use std::collections::HashMap;
+
 use raylib::prelude::*;
+
+type PiecesImagesType = HashMap<(PieceType, Side), Texture2D>;
 
 struct Game {
     tiles: [[Tile; Self::SIZE]; Self::SIZE],
+    pieces_images: PiecesImagesType,
 }
 
 impl Game {
     pub const SIZE: usize = 8;
 
-    pub fn new() -> Self {
+    pub fn new(rl: &mut RaylibHandle, thread: &RaylibThread) -> Self {
         let mut tiles = [[Tile::new(); Self::SIZE]; Self::SIZE];
 
         for y in 0..Self::SIZE {
@@ -18,7 +23,75 @@ impl Game {
             }
         }
 
-        let mut game = Game { tiles };
+        Image::load_image("./pieces/pngs/RookBlack.png").unwrap();
+
+        let pieces_images: PiecesImagesType = HashMap::from([
+            (
+                (PieceType::Rook, Side::Black),
+                rl.load_texture(thread, "./static/pieces/pngs/RookBlack.png")
+                    .unwrap(),
+            ),
+            (
+                (PieceType::Knight, Side::Black),
+                rl.load_texture(thread, "./static/pieces/pngs/KnightBlack.png")
+                    .unwrap(),
+            ),
+            (
+                (PieceType::Bishop, Side::Black),
+                rl.load_texture(thread, "./static/pieces/pngs/BishopBlack.png")
+                    .unwrap(),
+            ),
+            (
+                (PieceType::Queen, Side::Black),
+                rl.load_texture(thread, "./static/pieces/pngs/QueenBlack.png")
+                    .unwrap(),
+            ),
+            (
+                (PieceType::King, Side::Black),
+                rl.load_texture(thread, "./static/pieces/pngs/KingBlack.png")
+                    .unwrap(),
+            ),
+            (
+                (PieceType::Pawn, Side::Black),
+                rl.load_texture(thread, "./static/pieces/pngs/PawnBlack.png")
+                    .unwrap(),
+            ),
+            (
+                (PieceType::Rook, Side::White),
+                rl.load_texture(thread, "./static/pieces/pngs/RookWhite.png")
+                    .unwrap(),
+            ),
+            (
+                (PieceType::Knight, Side::White),
+                rl.load_texture(thread, "./static/pieces/pngs/KnightWhite.png")
+                    .unwrap(),
+            ),
+            (
+                (PieceType::Bishop, Side::White),
+                rl.load_texture(thread, "./static/pieces/pngs/BishopWhite.png")
+                    .unwrap(),
+            ),
+            (
+                (PieceType::Queen, Side::White),
+                rl.load_texture(thread, "./static/pieces/pngs/QueenWhite.png")
+                    .unwrap(),
+            ),
+            (
+                (PieceType::King, Side::White),
+                rl.load_texture(thread, "./static/pieces/pngs/KingWhite.png")
+                    .unwrap(),
+            ),
+            (
+                (PieceType::Pawn, Side::White),
+                rl.load_texture(thread, "./static/pieces/pngs/PawnWhite.png")
+                    .unwrap(),
+            ),
+        ]);
+
+        let mut game = Game {
+            tiles,
+            pieces_images,
+        };
         game.reset();
 
         game
@@ -75,9 +148,20 @@ impl Tile {
         }
     }
 
-    pub fn render(&self, d: &mut RaylibDrawHandle, (x, y): (i32, i32)) {
+    pub fn render(
+        &self,
+        d: &mut RaylibDrawHandle,
+        (x, y): (i32, i32),
+        pieces_images: &PiecesImagesType,
+    ) {
         match self.piece {
-            Some(piece) => d.draw_text(&piece.to_string(), x, y, 18, Color::PURPLE),
+            Some(piece) => d.draw_texture(
+                pieces_images.get(&(piece.kind, piece.side)).unwrap(),
+                x,
+                y,
+                Color::WHITE,
+            ),
+            // Some(piece) => d.draw_text(&piece.to_string(), x, y, 18, Color::PURPLE),
             None => {}
         }
     }
@@ -125,7 +209,7 @@ impl std::fmt::Display for Piece {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 enum PieceType {
     Pawn,
     Rook,
@@ -135,7 +219,7 @@ enum PieceType {
     King,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 enum Side {
     Black,
     White,
@@ -145,12 +229,12 @@ const WINDOW_WIDTH: i32 = 800;
 const WINDOW_HEIGHT: i32 = 800;
 
 fn main() {
-    let game = Game::new();
-
     let (mut rl, thread) = raylib::init()
         .size(WINDOW_WIDTH, WINDOW_HEIGHT)
         .title("Chessio")
         .build();
+
+    let game = Game::new(&mut rl, &thread);
 
     while !rl.window_should_close() {
         let mut d = rl.begin_drawing(&thread);
@@ -165,6 +249,7 @@ fn main() {
                         x as i32 * (WINDOW_WIDTH / Game::SIZE as i32) + 10,
                         y as i32 * (WINDOW_HEIGHT / Game::SIZE as i32) + 10,
                     ),
+                    &game.pieces_images,
                 )
             }
         }
