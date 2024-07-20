@@ -147,6 +147,15 @@ impl Game {
 
         return iter;
     }
+    pub fn tiles_iter_mut(&mut self) -> TilesIterMut {
+        let iter = TilesIterMut {
+            index_x: 0,
+            index_y: 0,
+            tiles: &mut self.tiles,
+        };
+
+        return iter;
+    }
 }
 
 #[derive(Copy, Clone)]
@@ -232,8 +241,13 @@ impl<'a> Iterator for TilesIterMut<'a> {
             return None;
         }
 
-        let tile = &mut self.tiles[self.index_y][self.index_x];
-        let tuple = (self.index_x, self.index_y, tile);
+        let tuple = unsafe {
+            (
+                self.index_x,
+                self.index_y,
+                &mut *(&mut self.tiles[self.index_x][self.index_y] as *mut Tile),
+            )
+        };
 
         self.index_x += 1;
         if self.index_x >= Game::SIZE {
@@ -312,6 +326,10 @@ fn main() {
         .title("Chessio")
         .build();
 
+    let icon = Image::load_image("./static/other/logo.png").unwrap();
+    rl.set_window_icon(icon);
+    rl.set_window_title(&thread, "Chessio");
+
     let mut game = Game::new(&mut rl, &thread);
 
     while !rl.window_should_close() {
@@ -319,8 +337,8 @@ fn main() {
         //     println!("PRESSED");
         // }
 
-        for (x, y, tile) in game.tiles_iter() {
-            println!("{x}, {y}");
+        for (_, _, tile) in game.tiles_iter_mut() {
+            tile.clear_bg();
         }
 
         let Vector2 {
