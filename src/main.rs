@@ -138,6 +138,111 @@ impl Game {
             self.tiles[tileY as usize][tileX as usize].bg = Some(Color::RED);
         }
     }
+    pub fn start_drag_event(&mut self, (x, y): (f32, f32)) {}
+    pub fn get_piece_available_moves(&self, (x, y): (usize, usize)) -> Vec<(usize, usize)> {
+        let mut available_moves: Vec<(usize, usize)> = Vec::new();
+        let piece = self.tiles[y][x].piece;
+
+        let piece = if let Some(piece) = piece {
+            piece
+        } else {
+            return available_moves;
+        };
+
+        match piece.kind {
+            PieceType::Pawn => match piece.side {
+                Side::Black => {
+                    if self.is_coord_in_board((x, y + 1)) && self.is_piece_on_cords((x, y + 1)).0 {
+                        available_moves.push((x, y + 1));
+                    }
+                    if piece.did_move == false
+                        && self.is_coord_in_board((x, y + 2))
+                        && self.is_piece_on_cords((x, y + 2)).0
+                    {
+                        available_moves.push((x, y + 2));
+                    }
+                    let piece_on_coords = self.is_piece_on_cords((x - 1, y + 1));
+                    match piece_on_coords.1 {
+                        Some(p) => {
+                            if self.is_coord_in_board((x - 1, y + 1))
+                                && self.is_piece_on_cords((x - 1, y + 1)).0
+                                && piece.side != p
+                            {
+                                available_moves.push((x - 1, y + 1))
+                            }
+                        }
+                        None => {}
+                    }
+                    let piece_on_coords = self.is_piece_on_cords((x + 1, y + 1));
+                    match piece_on_coords.1 {
+                        Some(p) => {
+                            if self.is_coord_in_board((x + 1, y + 1))
+                                && self.is_piece_on_cords((x + 1, y + 1)).0
+                                && piece.side != p
+                            {
+                                available_moves.push((x + 1, y + 1))
+                            }
+                        }
+                        None => {}
+                    }
+                }
+                Side::White => {
+                    if self.is_coord_in_board((x, y - 1)) && self.is_piece_on_cords((x, y - 1)).0 {
+                        available_moves.push((x, y - 1));
+                    }
+                    if piece.did_move == false
+                        && self.is_coord_in_board((x, y - 2))
+                        && self.is_piece_on_cords((x, y - 2)).0
+                    {
+                        available_moves.push((x, y - 2));
+                    }
+                    let piece_on_coords = self.is_piece_on_cords((x - 1, y - 1));
+                    match piece_on_coords.1 {
+                        Some(p) => {
+                            if self.is_coord_in_board((x - 1, y - 1))
+                                && self.is_piece_on_cords((x - 1, y - 1)).0
+                                && piece.side != p
+                            {
+                                available_moves.push((x - 1, y - 1))
+                            }
+                        }
+                        None => {}
+                    }
+                    let piece_on_coords = self.is_piece_on_cords((x + 1, y - 1));
+                    match piece_on_coords.1 {
+                        Some(p) => {
+                            if self.is_coord_in_board((x + 1, y - 1))
+                                && self.is_piece_on_cords((x + 1, y - 1)).0
+                                && piece.side != p
+                            {
+                                available_moves.push((x + 1, y - 1))
+                            }
+                        }
+                        None => {}
+                    }
+                }
+            },
+            PieceType::Rook => todo!(),
+            PieceType::Knight => todo!(),
+            PieceType::Bishop => todo!(),
+            PieceType::Queen => todo!(),
+            PieceType::King => todo!(),
+        }
+
+        available_moves
+    }
+    fn is_piece_on_cords(&self, (x, y): (usize, usize)) -> (bool, Option<Side>) {
+        let piece = self.tiles[y][x].piece;
+
+        match piece {
+            Some(piece) => (true, Some(piece.side)),
+            None => (false, None),
+        }
+    }
+    fn is_coord_in_board(&self, (x, y): (usize, usize)) -> bool {
+        return x < Self::SIZE && y < Self::SIZE;
+    }
+
     pub fn tiles_iter(&mut self) -> TilesIter {
         let iter = TilesIter {
             index_x: 0,
