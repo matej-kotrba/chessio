@@ -222,7 +222,99 @@ impl Game {
                     }
                 }
             },
-            PieceType::Rook => todo!(),
+            PieceType::Rook => match piece.side {
+                Side::Black => {
+                    let x_pos: usize = x;
+                    let y_pos: usize = y;
+
+                    loop {
+                        if !self.is_coord_in_board((x_pos, y_pos)) {
+                            break;
+                        }
+                        let p = self.is_piece_on_cords((x_pos, y_pos));
+
+                        if p.0 {
+                            match p.1 {
+                                Some(side) => {
+                                    if side == Side::White {
+                                        available_moves.push((x_pos, y_pos))
+                                    }
+                                }
+                                None => {}
+                            }
+                        }
+                    }
+
+                    // if self.is_coord_in_board((x, y + 1)) && self.is_piece_on_cords((x, y + 1)).0 {
+                    //     available_moves.push((x, y + 1));
+                    // }
+                    // if piece.did_move == false
+                    //     && self.is_coord_in_board((x, y + 2))
+                    //     && self.is_piece_on_cords((x, y + 2)).0
+                    // {
+                    //     available_moves.push((x, y + 2));
+                    // }
+                    // let piece_on_coords = self.is_piece_on_cords((x - 1, y + 1));
+                    // match piece_on_coords.1 {
+                    //     Some(p) => {
+                    //         if self.is_coord_in_board((x - 1, y + 1))
+                    //             && self.is_piece_on_cords((x - 1, y + 1)).0
+                    //             && piece.side != p
+                    //         {
+                    //             available_moves.push((x - 1, y + 1))
+                    //         }
+                    //     }
+                    //     None => {}
+                    // }
+                    // let piece_on_coords = self.is_piece_on_cords((x + 1, y + 1));
+                    // match piece_on_coords.1 {
+                    //     Some(p) => {
+                    //         if self.is_coord_in_board((x + 1, y + 1))
+                    //             && self.is_piece_on_cords((x + 1, y + 1)).0
+                    //             && piece.side != p
+                    //         {
+                    //             available_moves.push((x + 1, y + 1))
+                    //         }
+                    //     }
+                    //     None => {}
+                    // }
+                }
+                Side::White => {
+                    if self.is_coord_in_board((x, y - 1)) && self.is_piece_on_cords((x, y - 1)).0 {
+                        available_moves.push((x, y - 1));
+                    }
+                    if piece.did_move == false
+                        && self.is_coord_in_board((x, y - 2))
+                        && self.is_piece_on_cords((x, y - 2)).0
+                    {
+                        available_moves.push((x, y - 2));
+                    }
+                    let piece_on_coords = self.is_piece_on_cords((x - 1, y - 1));
+                    match piece_on_coords.1 {
+                        Some(p) => {
+                            if self.is_coord_in_board((x - 1, y - 1))
+                                && self.is_piece_on_cords((x - 1, y - 1)).0
+                                && piece.side != p
+                            {
+                                available_moves.push((x - 1, y - 1))
+                            }
+                        }
+                        None => {}
+                    }
+                    let piece_on_coords = self.is_piece_on_cords((x + 1, y - 1));
+                    match piece_on_coords.1 {
+                        Some(p) => {
+                            if self.is_coord_in_board((x + 1, y - 1))
+                                && self.is_piece_on_cords((x + 1, y - 1)).0
+                                && piece.side != p
+                            {
+                                available_moves.push((x + 1, y - 1))
+                            }
+                        }
+                        None => {}
+                    }
+                }
+            },
             PieceType::Knight => todo!(),
             PieceType::Bishop => todo!(),
             PieceType::Queen => todo!(),
