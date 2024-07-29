@@ -126,15 +126,15 @@ impl Game {
         &mut self,
         d: &mut RaylibDrawHandle,
         (piece, side): (PieceType, Side),
-        (x, y): (usize, usize),
+        (x, y): (f32, f32),
     ) {
         let piece_img = self.pieces_images.get(&(piece, side));
         match piece_img {
             Some(img) => d.draw_texture_ex(
                 img,
                 Vector2 {
-                    x: x as f32,
-                    y: y as f32,
+                    x: x - ((WINDOW_WIDTH / Self::SIZE as i32) / 2) as f32,
+                    y: y - ((WINDOW_HEIGHT / Self::SIZE as i32) / 2) as f32,
                 },
                 0.0,
                 1.0,
@@ -164,6 +164,16 @@ impl Game {
         for (index, piece) in backrow.iter().enumerate() {
             self.tiles[Self::SIZE - 1][index].piece = Some(Piece::new(*piece, Side::White));
         }
+    }
+    pub fn get_tile_on_coords(&self, (x, y): (f32, f32)) -> Option<Tile> {
+        let tile_x = (x / (WINDOW_WIDTH as f32 / Self::SIZE as f32)) as i32;
+        let tile_y = (y / (WINDOW_HEIGHT as f32 / Self::SIZE as f32)) as i32;
+
+        if tile_x >= 0 && tile_x < Self::SIZE as i32 && tile_y >= 0 && tile_y < Self::SIZE as i32 {
+            return Some(self.tiles[tile_y as usize][tile_x as usize]);
+        }
+
+        None
     }
     pub fn highlight_tile_by_position(&mut self, (x, y): (f32, f32)) {
         let tile_x = (x / (WINDOW_WIDTH as f32 / Self::SIZE as f32)) as i32;
@@ -406,7 +416,7 @@ impl Game {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 struct Tile {
     pub bg: Option<Color>,
     color: Color,
@@ -507,7 +517,7 @@ impl<'a> Iterator for TilesIterMut<'a> {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 struct Piece {
     kind: PieceType,
     side: Side,
@@ -601,9 +611,6 @@ fn main() {
         game.highlight_tile_by_position((mouse_x, mouse_y));
         game.render_available_moves();
 
-        // let piece_at_mouse_coords = game.piece
-        // game.render_piece_at_coords(&mut d, )
-
         let mut d = rl.begin_drawing(&thread);
 
         game.render(&mut d);
@@ -619,6 +626,22 @@ fn main() {
                     &game.pieces_images,
                 );
             }
+        }
+
+        match game.hovered_piece_coords {
+            Some(coords) => {
+                let tile_at_mouse_coords = game.tiles[coords.1][coords.0];
+                // println!("{:#?}", tile_at_mouse_coords);
+                match tile_at_mouse_coords.piece {
+                    Some(piece) => game.render_piece_at_coords(
+                        &mut d,
+                        (piece.kind, piece.side),
+                        (mouse_x, mouse_y),
+                    ),
+                    None => {}
+                }
+            }
+            _ => {}
         }
     }
 }
