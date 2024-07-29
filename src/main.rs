@@ -7,6 +7,7 @@ type PiecesImagesType = HashMap<(PieceType, Side), Texture2D>;
 struct Game {
     tiles: [[Tile; Self::SIZE]; Self::SIZE],
     pieces_images: PiecesImagesType,
+    hovered_piece_coords: Option<(usize, usize)>,
 }
 
 impl Game {
@@ -89,6 +90,7 @@ impl Game {
         let mut game = Game {
             tiles,
             pieces_images,
+            hovered_piece_coords: None,
         };
         game.reset();
 
@@ -106,6 +108,39 @@ impl Game {
                     self.tiles[y][x].bg.unwrap_or(self.tiles[y][x].color),
                 );
             }
+        }
+    }
+    pub fn render_available_moves(&mut self) {
+        match self.hovered_piece_coords {
+            Some(coords) => {
+                let moves = self.get_piece_available_moves((coords.0, coords.1));
+
+                for mov in moves {
+                    self.tiles[mov.1][mov.0].bg = Some(Color::YELLOW);
+                }
+            }
+            _ => {}
+        }
+    }
+    pub fn render_piece_at_coords(
+        &mut self,
+        d: &mut RaylibDrawHandle,
+        (piece, side): (PieceType, Side),
+        (x, y): (usize, usize),
+    ) {
+        let piece_img = self.pieces_images.get(&(piece, side));
+        match piece_img {
+            Some(img) => d.draw_texture_ex(
+                img,
+                Vector2 {
+                    x: x as f32,
+                    y: y as f32,
+                },
+                0.0,
+                1.0,
+                Color::WHITE,
+            ),
+            None => {}
         }
     }
     pub fn reset(&mut self) {
@@ -131,14 +166,23 @@ impl Game {
         }
     }
     pub fn highlight_tile_by_position(&mut self, (x, y): (f32, f32)) {
-        let tileX = (x / (WINDOW_WIDTH as f32 / Self::SIZE as f32)) as i32;
-        let tileY = (y / (WINDOW_HEIGHT as f32 / Self::SIZE as f32)) as i32;
+        let tile_x = (x / (WINDOW_WIDTH as f32 / Self::SIZE as f32)) as i32;
+        let tile_y = (y / (WINDOW_HEIGHT as f32 / Self::SIZE as f32)) as i32;
 
-        if tileX >= 0 && tileX < Self::SIZE as i32 && tileY >= 0 && tileY < Self::SIZE as i32 {
-            self.tiles[tileY as usize][tileX as usize].bg = Some(Color::RED);
+        if tile_x >= 0 && tile_x < Self::SIZE as i32 && tile_y >= 0 && tile_y < Self::SIZE as i32 {
+            self.tiles[tile_y as usize][tile_x as usize].bg = Some(Color::RED);
         }
     }
-    pub fn start_drag_event(&mut self, (x, y): (f32, f32)) {}
+    pub fn start_drag_event(&mut self, (x, y): (f32, f32)) {
+        let tile_x = (x / (WINDOW_WIDTH as f32 / Self::SIZE as f32)) as i32;
+        let tile_y = (y / (WINDOW_HEIGHT as f32 / Self::SIZE as f32)) as i32;
+
+        if tile_x >= 0 && tile_x < Self::SIZE as i32 && tile_y >= 0 && tile_y < Self::SIZE as i32 {
+            self.hovered_piece_coords = Some((tile_x as usize, tile_y as usize));
+        } else {
+            self.hovered_piece_coords = None
+        }
+    }
     pub fn get_piece_available_moves(&self, (x, y): (usize, usize)) -> Vec<(usize, usize)> {
         let mut available_moves: Vec<(usize, usize)> = Vec::new();
         let piece = self.tiles[y][x].piece;
@@ -149,15 +193,20 @@ impl Game {
             return available_moves;
         };
 
+        // println!(
+        //     "Piece: {:#?}, side: {:#?}, position: {} {}",
+        //     piece.kind, piece.side, x, y
+        // );
+
         match piece.kind {
             PieceType::Pawn => match piece.side {
                 Side::Black => {
-                    if self.is_coord_in_board((x, y + 1)) && self.is_piece_on_cords((x, y + 1)).0 {
+                    if self.is_coord_in_board((x, y + 1)) && !self.is_piece_on_cords((x, y + 1)).0 {
                         available_moves.push((x, y + 1));
                     }
                     if piece.did_move == false
                         && self.is_coord_in_board((x, y + 2))
-                        && self.is_piece_on_cords((x, y + 2)).0
+                        && !self.is_piece_on_cords((x, y + 2)).0
                     {
                         available_moves.push((x, y + 2));
                     }
@@ -187,12 +236,12 @@ impl Game {
                     }
                 }
                 Side::White => {
-                    if self.is_coord_in_board((x, y - 1)) && self.is_piece_on_cords((x, y - 1)).0 {
+                    if self.is_coord_in_board((x, y - 1)) && !self.is_piece_on_cords((x, y - 1)).0 {
                         available_moves.push((x, y - 1));
                     }
                     if piece.did_move == false
                         && self.is_coord_in_board((x, y - 2))
-                        && self.is_piece_on_cords((x, y - 2)).0
+                        && !self.is_piece_on_cords((x, y - 2)).0
                     {
                         available_moves.push((x, y - 2));
                     }
@@ -320,6 +369,8 @@ impl Game {
             PieceType::Queen => todo!(),
             PieceType::King => todo!(),
         }
+
+        // println!("{:#?}", available_moves);
 
         available_moves
     }
@@ -498,7 +549,7 @@ impl std::fmt::Display for Piece {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 enum PieceType {
     Pawn,
     Rook,
@@ -508,7 +559,7 @@ enum PieceType {
     King,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 enum Side {
     Black,
     White,
@@ -530,20 +581,28 @@ fn main() {
     let mut game = Game::new(&mut rl, &thread);
 
     while !rl.window_should_close() {
-        // if rl.is_mouse_button_pressed(MouseButton::MOUSE_LEFT_BUTTON) {
-        //     println!("PRESSED");
-        // }
-
-        for (_, _, tile) in game.tiles_iter_mut() {
-            tile.clear_bg();
-        }
-
         let Vector2 {
             x: mouse_x,
             y: mouse_y,
         } = rl.get_mouse_position();
 
+        if rl.is_mouse_button_pressed(MouseButton::MOUSE_LEFT_BUTTON) {
+            game.start_drag_event((mouse_x, mouse_y));
+        }
+
+        if rl.is_mouse_button_released(MouseButton::MOUSE_LEFT_BUTTON) {
+            game.hovered_piece_coords = None;
+        }
+
+        for (_, _, tile) in game.tiles_iter_mut() {
+            tile.clear_bg();
+        }
+
         game.highlight_tile_by_position((mouse_x, mouse_y));
+        game.render_available_moves();
+
+        // let piece_at_mouse_coords = game.piece
+        // game.render_piece_at_coords(&mut d, )
 
         let mut d = rl.begin_drawing(&thread);
 
@@ -558,7 +617,7 @@ fn main() {
                         y as i32 * (WINDOW_HEIGHT / Game::SIZE as i32),
                     ),
                     &game.pieces_images,
-                )
+                );
             }
         }
     }
