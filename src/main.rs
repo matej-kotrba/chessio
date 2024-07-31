@@ -113,7 +113,7 @@ impl Game {
     pub fn render_available_moves(&mut self) {
         match self.hovered_piece_coords {
             Some(coords) => {
-                let moves = self.get_piece_available_moves((coords.0, coords.1));
+                let moves = self.get_piece_available_moves((coords.0 as i32, coords.1 as i32));
 
                 for mov in moves {
                     self.tiles[mov.1][mov.0].bg = Some(Color::YELLOW);
@@ -193,9 +193,9 @@ impl Game {
             self.hovered_piece_coords = None
         }
     }
-    pub fn get_piece_available_moves(&self, (x, y): (usize, usize)) -> Vec<(usize, usize)> {
+    pub fn get_piece_available_moves(&self, (x, y): (i32, i32)) -> Vec<(usize, usize)> {
         let mut available_moves: Vec<(usize, usize)> = Vec::new();
-        let piece = self.tiles[y][x].piece;
+        let piece = self.tiles[y as usize][x as usize].piece;
 
         let piece = if let Some(piece) = piece {
             piece
@@ -212,34 +212,46 @@ impl Game {
             PieceType::Pawn => match piece.side {
                 Side::Black => {
                     if self.is_coord_in_board((x, y + 1)) && !self.is_piece_on_cords((x, y + 1)).0 {
-                        available_moves.push((x, y + 1));
+                        available_moves.push((x as usize, (y + 1) as usize));
                     }
                     if piece.did_move == false
                         && self.is_coord_in_board((x, y + 2))
                         && !self.is_piece_on_cords((x, y + 2)).0
                     {
-                        available_moves.push((x, y + 2));
+                        available_moves.push((x as usize, (y + 2) as usize));
                     }
-                    let piece_on_coords = self.is_piece_on_cords((x - 1, y + 1));
+
+                    let piece_on_coords = if self.is_coord_in_board((x - 1, y + 1)) {
+                        self.is_piece_on_cords((x - 1, y + 1))
+                    } else {
+                        (false, None)
+                    };
+
                     match piece_on_coords.1 {
                         Some(p) => {
                             if self.is_coord_in_board((x - 1, y + 1))
                                 && self.is_piece_on_cords((x - 1, y + 1)).0
                                 && piece.side != p
                             {
-                                available_moves.push((x - 1, y + 1))
+                                available_moves.push(((x - 1) as usize, (y + 1) as usize))
                             }
                         }
                         None => {}
                     }
-                    let piece_on_coords = self.is_piece_on_cords((x + 1, y + 1));
+
+                    let piece_on_coords = if self.is_coord_in_board((x + 1, y + 1)) {
+                        self.is_piece_on_cords((x + 1, y + 1))
+                    } else {
+                        (false, None)
+                    };
+
                     match piece_on_coords.1 {
                         Some(p) => {
                             if self.is_coord_in_board((x + 1, y + 1))
                                 && self.is_piece_on_cords((x + 1, y + 1)).0
                                 && piece.side != p
                             {
-                                available_moves.push((x + 1, y + 1))
+                                available_moves.push(((x + 1) as usize, (y + 1) as usize))
                             }
                         }
                         None => {}
@@ -247,34 +259,46 @@ impl Game {
                 }
                 Side::White => {
                     if self.is_coord_in_board((x, y - 1)) && !self.is_piece_on_cords((x, y - 1)).0 {
-                        available_moves.push((x, y - 1));
+                        available_moves.push((x as usize, (y - 1) as usize));
                     }
                     if piece.did_move == false
                         && self.is_coord_in_board((x, y - 2))
                         && !self.is_piece_on_cords((x, y - 2)).0
                     {
-                        available_moves.push((x, y - 2));
+                        available_moves.push((x as usize, (y - 2) as usize));
                     }
-                    let piece_on_coords = self.is_piece_on_cords((x - 1, y - 1));
+
+                    let piece_on_coords = if self.is_coord_in_board((x - 1, y - 1)) {
+                        self.is_piece_on_cords((x - 1, y - 1))
+                    } else {
+                        (false, None)
+                    };
+
                     match piece_on_coords.1 {
                         Some(p) => {
                             if self.is_coord_in_board((x - 1, y - 1))
                                 && self.is_piece_on_cords((x - 1, y - 1)).0
                                 && piece.side != p
                             {
-                                available_moves.push((x - 1, y - 1))
+                                available_moves.push(((x - 1) as usize, (y - 1) as usize))
                             }
                         }
                         None => {}
                     }
-                    let piece_on_coords = self.is_piece_on_cords((x + 1, y - 1));
+
+                    let piece_on_coords = if self.is_coord_in_board((x + 1, y - 1)) {
+                        self.is_piece_on_cords((x + 1, y - 1))
+                    } else {
+                        (false, None)
+                    };
+
                     match piece_on_coords.1 {
                         Some(p) => {
                             if self.is_coord_in_board((x + 1, y - 1))
                                 && self.is_piece_on_cords((x + 1, y - 1)).0
                                 && piece.side != p
                             {
-                                available_moves.push((x + 1, y - 1))
+                                available_moves.push(((x + 1) as usize, (y - 1) as usize))
                             }
                         }
                         None => {}
@@ -283,8 +307,8 @@ impl Game {
             },
             PieceType::Rook => match piece.side {
                 Side::Black => {
-                    let x_pos: usize = x;
-                    let y_pos: usize = y;
+                    let x_pos: i32 = x;
+                    let y_pos: i32 = y;
 
                     loop {
                         if !self.is_coord_in_board((x_pos, y_pos)) {
@@ -296,7 +320,7 @@ impl Game {
                             match p.1 {
                                 Some(side) => {
                                     if side == Side::White {
-                                        available_moves.push((x_pos, y_pos))
+                                        available_moves.push((x_pos as usize, y_pos as usize))
                                     }
                                 }
                                 None => {}
@@ -340,13 +364,13 @@ impl Game {
                 }
                 Side::White => {
                     if self.is_coord_in_board((x, y - 1)) && self.is_piece_on_cords((x, y - 1)).0 {
-                        available_moves.push((x, y - 1));
+                        available_moves.push((x as usize, (y - 1) as usize));
                     }
                     if piece.did_move == false
                         && self.is_coord_in_board((x, y - 2))
                         && self.is_piece_on_cords((x, y - 2)).0
                     {
-                        available_moves.push((x, y - 2));
+                        available_moves.push((x as usize, (y - 2) as usize));
                     }
                     let piece_on_coords = self.is_piece_on_cords((x - 1, y - 1));
                     match piece_on_coords.1 {
@@ -355,7 +379,7 @@ impl Game {
                                 && self.is_piece_on_cords((x - 1, y - 1)).0
                                 && piece.side != p
                             {
-                                available_moves.push((x - 1, y - 1))
+                                available_moves.push(((x - 1) as usize, (y - 1) as usize))
                             }
                         }
                         None => {}
@@ -367,7 +391,7 @@ impl Game {
                                 && self.is_piece_on_cords((x + 1, y - 1)).0
                                 && piece.side != p
                             {
-                                available_moves.push((x + 1, y - 1))
+                                available_moves.push(((x + 1) as usize, (y - 1) as usize))
                             }
                         }
                         None => {}
@@ -384,16 +408,16 @@ impl Game {
 
         available_moves
     }
-    fn is_piece_on_cords(&self, (x, y): (usize, usize)) -> (bool, Option<Side>) {
-        let piece = self.tiles[y][x].piece;
+    fn is_piece_on_cords(&self, (x, y): (i32, i32)) -> (bool, Option<Side>) {
+        let piece = self.tiles[y as usize][x as usize].piece;
 
         match piece {
             Some(piece) => (true, Some(piece.side)),
             None => (false, None),
         }
     }
-    fn is_coord_in_board(&self, (x, y): (usize, usize)) -> bool {
-        return x < Self::SIZE && y < Self::SIZE;
+    fn is_coord_in_board(&self, (x, y): (i32, i32)) -> bool {
+        return x >= 0 && y >= 0 && x < Self::SIZE as i32 && y < Self::SIZE as i32;
     }
 
     pub fn tiles_iter(&mut self) -> TilesIter {
@@ -617,6 +641,10 @@ fn main() {
 
         for y in 0..Game::SIZE {
             for x in 0..Game::SIZE {
+                if game.hovered_piece_coords == Some((x, y)) {
+                    continue;
+                }
+
                 game.tiles[y][x].render(
                     &mut d,
                     (
