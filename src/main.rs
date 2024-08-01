@@ -164,6 +164,8 @@ impl Game {
         for (index, piece) in backrow.iter().enumerate() {
             self.tiles[Self::SIZE - 1][index].piece = Some(Piece::new(*piece, Side::White));
         }
+
+        // self.tiles[4][4].piece = Some(Piece::new(PieceType::Rook, Side::Black));
     }
     pub fn get_tile_on_coords(&self, (x, y): (f32, f32)) -> Option<Tile> {
         let tile_x = (x / (WINDOW_WIDTH as f32 / Self::SIZE as f32)) as i32;
@@ -191,6 +193,34 @@ impl Game {
             self.hovered_piece_coords = Some((tile_x as usize, tile_y as usize));
         } else {
             self.hovered_piece_coords = None
+        }
+    }
+    fn get_pieces_linear_moves<'a>(
+        &'a self,
+        available_moves: &'a mut Vec<(usize, usize)>,
+        (temp_x, temp_y): (i32, i32),
+        (move_x, move_y): (i32, i32),
+        piece_side: Side,
+    ) {
+        if Self::is_coord_in_board(&self, (temp_x as i32, temp_y as i32)) {
+            let p = self.is_piece_on_cords((temp_x, temp_y));
+            match p.1 {
+                Some(side) => {
+                    if side != piece_side {
+                        available_moves.push((temp_x as usize, temp_y as usize));
+                    }
+                }
+                None => {
+                    available_moves.push((temp_x as usize, temp_y as usize));
+                    Self::get_pieces_linear_moves(
+                        self,
+                        available_moves,
+                        ((temp_x + move_x), (temp_y + move_y)),
+                        (move_x, move_y),
+                        piece_side,
+                    )
+                }
+            }
         }
     }
     pub fn get_piece_available_moves(&self, (x, y): (i32, i32)) -> Vec<(usize, usize)> {
@@ -307,95 +337,56 @@ impl Game {
             },
             PieceType::Rook => match piece.side {
                 Side::Black => {
-                    let x_pos: i32 = x;
-                    let y_pos: i32 = y;
-
-                    loop {
-                        if !self.is_coord_in_board((x_pos, y_pos)) {
-                            break;
-                        }
-                        let p = self.is_piece_on_cords((x_pos, y_pos));
-
-                        if p.0 {
-                            match p.1 {
-                                Some(side) => {
-                                    if side == Side::White {
-                                        available_moves.push((x_pos as usize, y_pos as usize))
-                                    }
-                                }
-                                None => {}
-                            }
-                        }
-                    }
-
-                    // if self.is_coord_in_board((x, y + 1)) && self.is_piece_on_cords((x, y + 1)).0 {
-                    //     available_moves.push((x, y + 1));
-                    // }
-                    // if piece.did_move == false
-                    //     && self.is_coord_in_board((x, y + 2))
-                    //     && self.is_piece_on_cords((x, y + 2)).0
-                    // {
-                    //     available_moves.push((x, y + 2));
-                    // }
-                    // let piece_on_coords = self.is_piece_on_cords((x - 1, y + 1));
-                    // match piece_on_coords.1 {
-                    //     Some(p) => {
-                    //         if self.is_coord_in_board((x - 1, y + 1))
-                    //             && self.is_piece_on_cords((x - 1, y + 1)).0
-                    //             && piece.side != p
-                    //         {
-                    //             available_moves.push((x - 1, y + 1))
-                    //         }
-                    //     }
-                    //     None => {}
-                    // }
-                    // let piece_on_coords = self.is_piece_on_cords((x + 1, y + 1));
-                    // match piece_on_coords.1 {
-                    //     Some(p) => {
-                    //         if self.is_coord_in_board((x + 1, y + 1))
-                    //             && self.is_piece_on_cords((x + 1, y + 1)).0
-                    //             && piece.side != p
-                    //         {
-                    //             available_moves.push((x + 1, y + 1))
-                    //         }
-                    //     }
-                    //     None => {}
-                    // }
+                    self.get_pieces_linear_moves(
+                        &mut available_moves,
+                        (x + 1, y),
+                        (1, 0),
+                        Side::Black,
+                    );
+                    self.get_pieces_linear_moves(
+                        &mut available_moves,
+                        (x - 1, y),
+                        (-1, 0),
+                        Side::Black,
+                    );
+                    self.get_pieces_linear_moves(
+                        &mut available_moves,
+                        (x, y + 1),
+                        (0, 1),
+                        Side::Black,
+                    );
+                    self.get_pieces_linear_moves(
+                        &mut available_moves,
+                        (x, y - 1),
+                        (0, -1),
+                        Side::Black,
+                    );
                 }
                 Side::White => {
-                    if self.is_coord_in_board((x, y - 1)) && self.is_piece_on_cords((x, y - 1)).0 {
-                        available_moves.push((x as usize, (y - 1) as usize));
-                    }
-                    if piece.did_move == false
-                        && self.is_coord_in_board((x, y - 2))
-                        && self.is_piece_on_cords((x, y - 2)).0
-                    {
-                        available_moves.push((x as usize, (y - 2) as usize));
-                    }
-                    let piece_on_coords = self.is_piece_on_cords((x - 1, y - 1));
-                    match piece_on_coords.1 {
-                        Some(p) => {
-                            if self.is_coord_in_board((x - 1, y - 1))
-                                && self.is_piece_on_cords((x - 1, y - 1)).0
-                                && piece.side != p
-                            {
-                                available_moves.push(((x - 1) as usize, (y - 1) as usize))
-                            }
-                        }
-                        None => {}
-                    }
-                    let piece_on_coords = self.is_piece_on_cords((x + 1, y - 1));
-                    match piece_on_coords.1 {
-                        Some(p) => {
-                            if self.is_coord_in_board((x + 1, y - 1))
-                                && self.is_piece_on_cords((x + 1, y - 1)).0
-                                && piece.side != p
-                            {
-                                available_moves.push(((x + 1) as usize, (y - 1) as usize))
-                            }
-                        }
-                        None => {}
-                    }
+                    self.get_pieces_linear_moves(
+                        &mut available_moves,
+                        (x + 1, y),
+                        (1, 0),
+                        Side::White,
+                    );
+                    self.get_pieces_linear_moves(
+                        &mut available_moves,
+                        (x - 1, y),
+                        (-1, 0),
+                        Side::White,
+                    );
+                    self.get_pieces_linear_moves(
+                        &mut available_moves,
+                        (x, y + 1),
+                        (0, 1),
+                        Side::White,
+                    );
+                    self.get_pieces_linear_moves(
+                        &mut available_moves,
+                        (x, y - 1),
+                        (0, -1),
+                        Side::White,
+                    );
                 }
             },
             PieceType::Knight => todo!(),
@@ -404,7 +395,7 @@ impl Game {
             PieceType::King => todo!(),
         }
 
-        // println!("{:#?}", available_moves);
+        println!("{:#?}", available_moves);
 
         available_moves
     }
