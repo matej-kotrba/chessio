@@ -165,7 +165,7 @@ impl Game {
             self.tiles[Self::SIZE - 1][index].piece = Some(Piece::new(*piece, Side::White));
         }
 
-        // self.tiles[4][4].piece = Some(Piece::new(PieceType::Bishop, Side::White));
+        // self.tiles[4][4].piece = Some(Piece::new(PieceType::Queen, Side::Black));
     }
     pub fn get_tile_on_coords(&self, (x, y): (f32, f32)) -> Option<Tile> {
         let tile_x = (x / (WINDOW_WIDTH as f32 / Self::SIZE as f32)) as i32;
@@ -443,8 +443,112 @@ impl Game {
                     );
                 }
             },
-            PieceType::Knight => todo!(),
-            PieceType::Queen => todo!(),
+            PieceType::Queen => match piece.side {
+                Side::Black => {
+                    self.get_pieces_linear_moves(
+                        &mut available_moves,
+                        (x + 1, y + 1),
+                        (1, 1),
+                        Side::Black,
+                    );
+                    self.get_pieces_linear_moves(
+                        &mut available_moves,
+                        (x + 1, y - 1),
+                        (1, -1),
+                        Side::Black,
+                    );
+                    self.get_pieces_linear_moves(
+                        &mut available_moves,
+                        (x - 1, y + 1),
+                        (-1, 1),
+                        Side::Black,
+                    );
+                    self.get_pieces_linear_moves(
+                        &mut available_moves,
+                        (x - 1, y - 1),
+                        (-1, -1),
+                        Side::Black,
+                    );
+                    self.get_pieces_linear_moves(
+                        &mut available_moves,
+                        (x + 1, y),
+                        (1, 0),
+                        Side::Black,
+                    );
+                    self.get_pieces_linear_moves(
+                        &mut available_moves,
+                        (x - 1, y),
+                        (-1, 0),
+                        Side::Black,
+                    );
+                    self.get_pieces_linear_moves(
+                        &mut available_moves,
+                        (x, y + 1),
+                        (0, 1),
+                        Side::Black,
+                    );
+                    self.get_pieces_linear_moves(
+                        &mut available_moves,
+                        (x, y - 1),
+                        (0, -1),
+                        Side::Black,
+                    );
+                }
+                Side::White => {
+                    self.get_pieces_linear_moves(
+                        &mut available_moves,
+                        (x + 1, y + 1),
+                        (1, 1),
+                        Side::White,
+                    );
+                    self.get_pieces_linear_moves(
+                        &mut available_moves,
+                        (x + 1, y - 1),
+                        (1, -1),
+                        Side::White,
+                    );
+                    self.get_pieces_linear_moves(
+                        &mut available_moves,
+                        (x - 1, y + 1),
+                        (-1, 1),
+                        Side::White,
+                    );
+                    self.get_pieces_linear_moves(
+                        &mut available_moves,
+                        (x - 1, y - 1),
+                        (-1, -1),
+                        Side::White,
+                    );
+                    self.get_pieces_linear_moves(
+                        &mut available_moves,
+                        (x + 1, y),
+                        (1, 0),
+                        Side::White,
+                    );
+                    self.get_pieces_linear_moves(
+                        &mut available_moves,
+                        (x - 1, y),
+                        (-1, 0),
+                        Side::White,
+                    );
+                    self.get_pieces_linear_moves(
+                        &mut available_moves,
+                        (x, y + 1),
+                        (0, 1),
+                        Side::White,
+                    );
+                    self.get_pieces_linear_moves(
+                        &mut available_moves,
+                        (x, y - 1),
+                        (0, -1),
+                        Side::White,
+                    );
+                }
+            },
+            PieceType::Knight => match piece.side {
+                Side::Black => {}
+                Side::White => todo!(),
+            },
             PieceType::King => todo!(),
         }
 
