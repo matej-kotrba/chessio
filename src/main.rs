@@ -165,7 +165,7 @@ impl Game {
             self.tiles[Self::SIZE - 1][index].piece = Some(Piece::new(*piece, Side::White));
         }
 
-        // self.tiles[4][4].piece = Some(Piece::new(PieceType::Rook, Side::Black));
+        // self.tiles[4][4].piece = Some(Piece::new(PieceType::Bishop, Side::White));
     }
     pub fn get_tile_on_coords(&self, (x, y): (f32, f32)) -> Option<Tile> {
         let tile_x = (x / (WINDOW_WIDTH as f32 / Self::SIZE as f32)) as i32;
@@ -389,13 +389,66 @@ impl Game {
                     );
                 }
             },
+            PieceType::Bishop => match piece.side {
+                Side::Black => {
+                    self.get_pieces_linear_moves(
+                        &mut available_moves,
+                        (x + 1, y + 1),
+                        (1, 1),
+                        Side::Black,
+                    );
+                    self.get_pieces_linear_moves(
+                        &mut available_moves,
+                        (x + 1, y - 1),
+                        (1, -1),
+                        Side::Black,
+                    );
+                    self.get_pieces_linear_moves(
+                        &mut available_moves,
+                        (x - 1, y + 1),
+                        (-1, 1),
+                        Side::Black,
+                    );
+                    self.get_pieces_linear_moves(
+                        &mut available_moves,
+                        (x - 1, y - 1),
+                        (-1, -1),
+                        Side::Black,
+                    );
+                }
+                Side::White => {
+                    self.get_pieces_linear_moves(
+                        &mut available_moves,
+                        (x + 1, y + 1),
+                        (1, 1),
+                        Side::White,
+                    );
+                    self.get_pieces_linear_moves(
+                        &mut available_moves,
+                        (x + 1, y - 1),
+                        (1, -1),
+                        Side::White,
+                    );
+                    self.get_pieces_linear_moves(
+                        &mut available_moves,
+                        (x - 1, y + 1),
+                        (-1, 1),
+                        Side::White,
+                    );
+                    self.get_pieces_linear_moves(
+                        &mut available_moves,
+                        (x - 1, y - 1),
+                        (-1, -1),
+                        Side::White,
+                    );
+                }
+            },
             PieceType::Knight => todo!(),
-            PieceType::Bishop => todo!(),
             PieceType::Queen => todo!(),
             PieceType::King => todo!(),
         }
 
-        println!("{:#?}", available_moves);
+        // println!("{:#?}", available_moves);
 
         available_moves
     }
