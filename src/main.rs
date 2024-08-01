@@ -165,7 +165,7 @@ impl Game {
             self.tiles[Self::SIZE - 1][index].piece = Some(Piece::new(*piece, Side::White));
         }
 
-        // self.tiles[4][4].piece = Some(Piece::new(PieceType::Queen, Side::Black));
+        // self.tiles[4][4].piece = Some(Piece::new(PieceType::Knight, Side::White));
     }
     pub fn get_tile_on_coords(&self, (x, y): (f32, f32)) -> Option<Tile> {
         let tile_x = (x / (WINDOW_WIDTH as f32 / Self::SIZE as f32)) as i32;
@@ -546,8 +546,46 @@ impl Game {
                 }
             },
             PieceType::Knight => match piece.side {
-                Side::Black => {}
-                Side::White => todo!(),
+                Side::Black => {
+                    let coords = [
+                        (x - 1, y - 2),
+                        (x + 1, y - 2),
+                        (x + 2, y - 1),
+                        (x + 2, y + 1),
+                        (x + 2, y + 1),
+                        (x + 1, y + 2),
+                        (x - 1, y + 2),
+                        (x - 2, y + 1),
+                        (x - 2, y - 1),
+                    ];
+                    for coords in coords {
+                        if self.is_coord_in_board(coords)
+                            && self.is_piece_on_cords(coords).1 != Some(Side::Black)
+                        {
+                            available_moves.push((coords.0 as usize, coords.1 as usize));
+                        }
+                    }
+                }
+                Side::White => {
+                    let coords = [
+                        (x - 1, y - 2),
+                        (x + 1, y - 2),
+                        (x + 2, y - 1),
+                        (x + 2, y + 1),
+                        (x + 2, y + 1),
+                        (x + 1, y + 2),
+                        (x - 1, y + 2),
+                        (x - 2, y + 1),
+                        (x - 2, y - 1),
+                    ];
+                    for coords in coords {
+                        if self.is_coord_in_board(coords)
+                            && self.is_piece_on_cords(coords).1 != Some(Side::White)
+                        {
+                            available_moves.push((coords.0 as usize, coords.1 as usize));
+                        }
+                    }
+                }
             },
             PieceType::King => todo!(),
         }
