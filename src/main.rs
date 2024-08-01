@@ -165,7 +165,8 @@ impl Game {
             self.tiles[Self::SIZE - 1][index].piece = Some(Piece::new(*piece, Side::White));
         }
 
-        // self.tiles[4][4].piece = Some(Piece::new(PieceType::Knight, Side::White));
+        self.tiles[4][4].piece = Some(Piece::new(PieceType::King, Side::Black));
+        self.tiles[2][4].piece = Some(Piece::new(PieceType::King, Side::White));
     }
     pub fn get_tile_on_coords(&self, (x, y): (f32, f32)) -> Option<Tile> {
         let tile_x = (x / (WINDOW_WIDTH as f32 / Self::SIZE as f32)) as i32;
@@ -222,6 +223,18 @@ impl Game {
                 }
             }
         }
+    }
+    fn get_distance_between_direct_coords(
+        (x1, y1): (usize, usize),
+        (x2, y2): (usize, usize),
+    ) -> i64 {
+        let a: i64 = (x2 as i64) - (x1 as i64);
+        let b: i64 = (y2 as i64) - (y1 as i64);
+        let c = ((a.pow(2) + b.pow(2)) as f64) / f64::sqrt(2.);
+        if c.fract() != 0.0 {
+            return c as i64;
+        }
+        c as i64
     }
     pub fn get_piece_available_moves(&self, (x, y): (i32, i32)) -> Vec<(usize, usize)> {
         let mut available_moves: Vec<(usize, usize)> = Vec::new();
@@ -587,7 +600,72 @@ impl Game {
                     }
                 }
             },
-            PieceType::King => todo!(),
+            PieceType::King => {
+                let coords_around_king = [
+                    (x + 1, y),
+                    (x + 1, y + 1),
+                    (x, y + 1),
+                    (x - 1, y + 1),
+                    (x - 1, y),
+                    (x - 1, y - 1),
+                    (x + 1, y),
+                    (x, y - 1),
+                    (x + 1, y - 1),
+                ];
+                match piece.side {
+                    Side::Black => {
+                        let mut enemy_king_coords = None;
+                        for (king_x, king_y, tile) in self.tiles_iter() {
+                            match tile.piece {
+                                Some(piece) => {
+                                    if piece.kind == PieceType::King && piece.side == Side::White {
+                                        enemy_king_coords = Some((king_x, king_y));
+                                        break;
+                                    }
+                                }
+                                None => {}
+                            }
+                        }
+
+                        match enemy_king_coords {
+                            Some(enemy_king_coords) => {
+                                for cords in coords_around_king {
+                                    if Self::get_distance_between_direct_coords(
+                                        (cords.0 as usize, cords.1 as usize),
+                                        enemy_king_coords,
+                                    ) > 1
+                                    {
+                                        available_moves.push((cords.0 as usize, cords.1 as usize));
+                                    }
+                                }
+                            }
+                            None => {}
+                        }
+                    }
+                    Side::White => {
+                        let mut enemy_king_coords = None;
+                        for (king_x, king_y, _) in self.tiles_iter() {
+                            if piece.kind == PieceType::King && piece.side == Side::Black {
+                                enemy_king_coords = Some((king_x, king_y));
+                            }
+                        }
+                        match enemy_king_coords {
+                            Some(enemy_king_coords) => {
+                                for cords in coords_around_king {
+                                    if Self::get_distance_between_direct_coords(
+                                        (cords.0 as usize, cords.1 as usize),
+                                        enemy_king_coords,
+                                    ) > 1
+                                    {
+                                        available_moves.push((cords.0 as usize, cords.1 as usize));
+                                    }
+                                }
+                            }
+                            None => {}
+                        }
+                    }
+                }
+            }
         }
 
         // println!("{:#?}", available_moves);
@@ -606,7 +684,7 @@ impl Game {
         return x >= 0 && y >= 0 && x < Self::SIZE as i32 && y < Self::SIZE as i32;
     }
 
-    pub fn tiles_iter(&mut self) -> TilesIter {
+    pub fn tiles_iter(&self) -> TilesIter {
         let iter = TilesIter {
             index_x: 0,
             index_y: 0,
