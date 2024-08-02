@@ -165,8 +165,8 @@ impl Game {
             self.tiles[Self::SIZE - 1][index].piece = Some(Piece::new(*piece, Side::White));
         }
 
-        self.tiles[4][4].piece = Some(Piece::new(PieceType::King, Side::Black));
-        self.tiles[2][4].piece = Some(Piece::new(PieceType::King, Side::White));
+        // self.tiles[4][4].piece = Some(Piece::new(PieceType::King, Side::White));
+        // self.tiles[2][4].piece = Some(Piece::new(PieceType::King, Side::Black));
     }
     pub fn get_tile_on_coords(&self, (x, y): (f32, f32)) -> Option<Tile> {
         let tile_x = (x / (WINDOW_WIDTH as f32 / Self::SIZE as f32)) as i32;
@@ -256,12 +256,13 @@ impl Game {
                 Side::Black => {
                     if self.is_coord_in_board((x, y + 1)) && !self.is_piece_on_cords((x, y + 1)).0 {
                         available_moves.push((x as usize, (y + 1) as usize));
-                    }
-                    if piece.did_move == false
-                        && self.is_coord_in_board((x, y + 2))
-                        && !self.is_piece_on_cords((x, y + 2)).0
-                    {
-                        available_moves.push((x as usize, (y + 2) as usize));
+
+                        if piece.did_move == false
+                            && self.is_coord_in_board((x, y + 2))
+                            && !self.is_piece_on_cords((x, y + 2)).0
+                        {
+                            available_moves.push((x as usize, (y + 2) as usize));
+                        }
                     }
 
                     let piece_on_coords = if self.is_coord_in_board((x - 1, y + 1)) {
@@ -303,12 +304,13 @@ impl Game {
                 Side::White => {
                     if self.is_coord_in_board((x, y - 1)) && !self.is_piece_on_cords((x, y - 1)).0 {
                         available_moves.push((x as usize, (y - 1) as usize));
-                    }
-                    if piece.did_move == false
-                        && self.is_coord_in_board((x, y - 2))
-                        && !self.is_piece_on_cords((x, y - 2)).0
-                    {
-                        available_moves.push((x as usize, (y - 2) as usize));
+
+                        if piece.did_move == false
+                            && self.is_coord_in_board((x, y - 2))
+                            && !self.is_piece_on_cords((x, y - 2)).0
+                        {
+                            available_moves.push((x as usize, (y - 2) as usize));
+                        }
                     }
 
                     let piece_on_coords = if self.is_coord_in_board((x - 1, y - 1)) {
@@ -630,10 +632,12 @@ impl Game {
                         match enemy_king_coords {
                             Some(enemy_king_coords) => {
                                 for cords in coords_around_king {
-                                    if Self::get_distance_between_direct_coords(
-                                        (cords.0 as usize, cords.1 as usize),
-                                        enemy_king_coords,
-                                    ) > 1
+                                    if self.is_coord_in_board(cords)
+                                        && Self::get_distance_between_direct_coords(
+                                            (cords.0 as usize, cords.1 as usize),
+                                            enemy_king_coords,
+                                        ) > 1
+                                        && self.is_piece_on_cords(cords).1 != Some(Side::Black)
                                     {
                                         available_moves.push((cords.0 as usize, cords.1 as usize));
                                     }
@@ -644,18 +648,27 @@ impl Game {
                     }
                     Side::White => {
                         let mut enemy_king_coords = None;
-                        for (king_x, king_y, _) in self.tiles_iter() {
-                            if piece.kind == PieceType::King && piece.side == Side::Black {
-                                enemy_king_coords = Some((king_x, king_y));
+                        for (king_x, king_y, tile) in self.tiles_iter() {
+                            match tile.piece {
+                                Some(piece) => {
+                                    if piece.kind == PieceType::King && piece.side == Side::Black {
+                                        enemy_king_coords = Some((king_x, king_y));
+                                        break;
+                                    }
+                                }
+                                None => {}
                             }
                         }
+
                         match enemy_king_coords {
                             Some(enemy_king_coords) => {
                                 for cords in coords_around_king {
-                                    if Self::get_distance_between_direct_coords(
-                                        (cords.0 as usize, cords.1 as usize),
-                                        enemy_king_coords,
-                                    ) > 1
+                                    if self.is_coord_in_board(cords)
+                                        && Self::get_distance_between_direct_coords(
+                                            (cords.0 as usize, cords.1 as usize),
+                                            enemy_king_coords,
+                                        ) > 1
+                                        && self.is_piece_on_cords(cords).1 != Some(Side::White)
                                     {
                                         available_moves.push((cords.0 as usize, cords.1 as usize));
                                     }
