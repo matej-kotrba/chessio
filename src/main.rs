@@ -172,7 +172,7 @@ impl Game {
             self.tiles[Self::SIZE - 1][index].piece = Some(Piece::new(*piece, Side::White));
         }
 
-        // self.tiles[4][4].piece = Some(Piece::new(PieceType::King, Side::White));
+        self.tiles[4][4].piece = Some(Piece::new(PieceType::Pawn, Side::Black));
         // self.tiles[2][4].piece = Some(Piece::new(PieceType::King, Side::Black));
     }
     pub fn get_tile_on_coords(
@@ -210,6 +210,28 @@ impl Game {
             }
             None => self.hovered_piece_coords = None,
         }
+    }
+    pub fn end_drag_event(&mut self, (x, y): (f32, f32)) {
+        let piece = if let Some(coords) = self.hovered_piece_coords {
+            (self.tiles[coords.1][coords.0].piece, coords)
+        } else {
+            return;
+        };
+        let available_moves =
+            self.get_piece_available_moves((piece.1 .0 as i32, piece.1 .1 as i32));
+
+        let tile = self.get_tile_on_coords((x, y));
+        match tile {
+            Some(t) => {
+                if available_moves.contains(&t.1) {
+                    t.0.piece = piece.0;
+                    self.tiles[piece.1 .1][piece.1 .0].piece = None;
+                }
+            }
+            None => {}
+        }
+
+        self.hovered_piece_coords = None;
     }
     fn get_pieces_linear_moves<'a>(
         &'a self,
@@ -921,7 +943,7 @@ fn main() {
         }
 
         if rl.is_mouse_button_released(MouseButton::MOUSE_LEFT_BUTTON) {
-            game.hovered_piece_coords = None;
+            game.end_drag_event((mouse_x, mouse_y));
         }
 
         for (_, _, tile) in game.tiles_iter_mut() {
@@ -949,7 +971,6 @@ fn main() {
 
         game.highlight_tile_by_position((mouse_x, mouse_y));
         game.render(&mut d);
-        game.render_available_moves(&mut d);
 
         for y in 0..Game::SIZE {
             for x in 0..Game::SIZE {
@@ -967,6 +988,8 @@ fn main() {
                 );
             }
         }
+
+        game.render_available_moves(&mut d);
 
         match game.hovered_piece_coords {
             Some(coords) => {
