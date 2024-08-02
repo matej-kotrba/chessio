@@ -168,32 +168,37 @@ impl Game {
         // self.tiles[4][4].piece = Some(Piece::new(PieceType::King, Side::White));
         // self.tiles[2][4].piece = Some(Piece::new(PieceType::King, Side::Black));
     }
-    pub fn get_tile_on_coords(&self, (x, y): (f32, f32)) -> Option<Tile> {
+    pub fn get_tile_on_cords(&mut self, (x, y): (f32, f32)) -> Option<(&mut Tile, (usize, usize))> {
         let tile_x = (x / (WINDOW_WIDTH as f32 / Self::SIZE as f32)) as i32;
         let tile_y = (y / (WINDOW_HEIGHT as f32 / Self::SIZE as f32)) as i32;
 
         if tile_x >= 0 && tile_x < Self::SIZE as i32 && tile_y >= 0 && tile_y < Self::SIZE as i32 {
-            return Some(self.tiles[tile_y as usize][tile_x as usize]);
+            return Some((
+                &mut self.tiles[tile_y as usize][tile_x as usize],
+                (tile_x as usize, tile_y as usize),
+            ));
         }
 
         None
     }
     pub fn highlight_tile_by_position(&mut self, (x, y): (f32, f32)) {
-        let tile_x = (x / (WINDOW_WIDTH as f32 / Self::SIZE as f32)) as i32;
-        let tile_y = (y / (WINDOW_HEIGHT as f32 / Self::SIZE as f32)) as i32;
+        let tile = self.get_tile_on_cords((x, y));
 
-        if tile_x >= 0 && tile_x < Self::SIZE as i32 && tile_y >= 0 && tile_y < Self::SIZE as i32 {
-            self.tiles[tile_y as usize][tile_x as usize].bg = Some(Color::RED);
+        match tile {
+            Some(t) => {
+                t.0.bg = Some(Color::RED);
+            }
+            None => {}
         }
     }
     pub fn start_drag_event(&mut self, (x, y): (f32, f32)) {
-        let tile_x = (x / (WINDOW_WIDTH as f32 / Self::SIZE as f32)) as i32;
-        let tile_y = (y / (WINDOW_HEIGHT as f32 / Self::SIZE as f32)) as i32;
+        let tile = self.get_tile_on_cords((x, y));
 
-        if tile_x >= 0 && tile_x < Self::SIZE as i32 && tile_y >= 0 && tile_y < Self::SIZE as i32 {
-            self.hovered_piece_coords = Some((tile_x as usize, tile_y as usize));
-        } else {
-            self.hovered_piece_coords = None
+        match tile {
+            Some(t) => {
+                self.hovered_piece_coords = Some(t.1);
+            }
+            None => self.hovered_piece_coords = None,
         }
     }
     fn get_pieces_linear_moves<'a>(
