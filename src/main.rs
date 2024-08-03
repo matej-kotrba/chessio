@@ -4,10 +4,19 @@ use raylib::prelude::*;
 
 type PiecesImagesType = HashMap<(PieceType, Side), Texture2D>;
 
+struct GameMoveRecord {
+    kind: PieceType,
+    side: Side,
+    from: (usize, usize),
+    to: (usize, usize),
+    taken_piece: Option<PieceType>,
+}
+
 struct Game {
     tiles: [[Tile; Self::SIZE]; Self::SIZE],
     pieces_images: PiecesImagesType,
     hovered_piece_coords: Option<(usize, usize)>,
+    move_records: Vec<GameMoveRecord>,
 }
 
 impl Game {
@@ -91,13 +100,14 @@ impl Game {
             tiles,
             pieces_images,
             hovered_piece_coords: None,
+            move_records: Vec::new(),
         };
         game.reset();
 
         game
     }
     pub fn render(&self, d: &mut RaylibDrawHandle) {
-        let size = WINDOW_WIDTH as usize / Self::SIZE;
+        let size = CHESSBOARD_WIDTH as usize / Self::SIZE;
         for y in 0..Self::SIZE {
             for x in 0..Self::SIZE {
                 d.draw_rectangle(
@@ -114,7 +124,7 @@ impl Game {
         match self.hovered_piece_coords {
             Some(coords) => {
                 let moves = self.get_piece_available_moves((coords.0 as i32, coords.1 as i32));
-                let tile_size = WINDOW_WIDTH / (Self::SIZE as i32);
+                let tile_size = CHESSBOARD_WIDTH / (Self::SIZE as i32);
 
                 for mov in moves {
                     d.draw_circle(
@@ -140,8 +150,8 @@ impl Game {
             Some(img) => d.draw_texture_ex(
                 img,
                 Vector2 {
-                    x: x - ((WINDOW_WIDTH / Self::SIZE as i32) / 2) as f32,
-                    y: y - ((WINDOW_HEIGHT / Self::SIZE as i32) / 2) as f32,
+                    x: x - ((CHESSBOARD_WIDTH / Self::SIZE as i32) / 2) as f32,
+                    y: y - ((CHESSBOARD_HEIGHT / Self::SIZE as i32) / 2) as f32,
                 },
                 0.0,
                 1.0,
@@ -175,12 +185,12 @@ impl Game {
         self.tiles[4][4].piece = Some(Piece::new(PieceType::Pawn, Side::Black));
         // self.tiles[2][4].piece = Some(Piece::new(PieceType::King, Side::Black));
     }
-    pub fn get_tile_on_coords(
+    pub fn get_tile_on_coords_mut(
         &mut self,
         (x, y): (f32, f32),
     ) -> Option<(&mut Tile, (usize, usize))> {
-        let tile_x = (x / (WINDOW_WIDTH as f32 / Self::SIZE as f32)) as i32;
-        let tile_y = (y / (WINDOW_HEIGHT as f32 / Self::SIZE as f32)) as i32;
+        let tile_x = (x / (CHESSBOARD_WIDTH as f32 / Self::SIZE as f32)) as i32;
+        let tile_y = (y / (CHESSBOARD_HEIGHT as f32 / Self::SIZE as f32)) as i32;
 
         if tile_x >= 0 && tile_x < Self::SIZE as i32 && tile_y >= 0 && tile_y < Self::SIZE as i32 {
             return Some((
@@ -191,8 +201,21 @@ impl Game {
 
         None
     }
+    pub fn get_tile_on_coords(&self, (x, y): (f32, f32)) -> Option<(&Tile, (usize, usize))> {
+        let tile_x = (x / (CHESSBOARD_WIDTH as f32 / Self::SIZE as f32)) as i32;
+        let tile_y = (y / (CHESSBOARD_HEIGHT as f32 / Self::SIZE as f32)) as i32;
+
+        if tile_x >= 0 && tile_x < Self::SIZE as i32 && tile_y >= 0 && tile_y < Self::SIZE as i32 {
+            return Some((
+                &self.tiles[tile_y as usize][tile_x as usize],
+                (tile_x as usize, tile_y as usize),
+            ));
+        }
+
+        None
+    }
     pub fn highlight_tile_by_position(&mut self, (x, y): (f32, f32)) {
-        let tile = self.get_tile_on_coords((x, y));
+        let tile = self.get_tile_on_coords_mut((x, y));
 
         match tile {
             Some(t) => {
@@ -202,7 +225,7 @@ impl Game {
         }
     }
     pub fn start_drag_event(&mut self, (x, y): (f32, f32)) {
-        let tile = self.get_tile_on_coords((x, y));
+        let tile = self.get_tile_on_coords_mut((x, y));
 
         match tile {
             Some(t) => {
@@ -212,23 +235,46 @@ impl Game {
         }
     }
     pub fn end_drag_event(&mut self, (x, y): (f32, f32)) {
-        let piece = if let Some(coords) = self.hovered_piece_coords {
+        let tile_with_piece = if let Some(coords) = self.hovered_piece_coords {
             (self.tiles[coords.1][coords.0].piece, coords)
         } else {
             return;
         };
-        let available_moves =
-            self.get_piece_available_moves((piece.1 .0 as i32, piece.1 .1 as i32));
 
-        let tile = self.get_tile_on_coords((x, y));
-        match tile {
-            Some(t) => {
-                if available_moves.contains(&t.1) {
-                    t.0.piece = piece.0;
-                    self.tiles[piece.1 .1][piece.1 .0].piece = None;
-                }
-            }
-            None => {}
+        let piece = if let Some(p) = tile_with_piece.0 {
+            p
+        } else {
+            return;
+        };
+
+        let available_moves = self
+            .get_piece_available_moves((tile_with_piece.1 .0 as i32, tile_with_piece.1 .1 as i32));
+
+        let tile_to_drop = self.get_tile_on_coords((x, y));
+        let coords = if let Some(tile) = tile_to_drop {
+            tile.1
+        } else {
+            return;
+        };
+        if available_moves.contains(&coords) {
+            let taken_piece_type: Option<PieceType> = if let Some(p) = tile_with_piece.0 {
+                Some(p.kind)
+            } else {
+                None
+            };
+
+            let move_record = GameMoveRecord {
+                from: (tile_with_piece.1 .0, tile_with_piece.1 .0),
+                to: coords,
+                kind: piece.kind,
+                side: piece.side,
+                taken_piece: taken_piece_type,
+            };
+
+            self.move_records.push(move_record);
+
+            self.tiles[coords.1][coords.0].piece = tile_with_piece.0;
+            self.tiles[tile_with_piece.1 .1][tile_with_piece.1 .0].piece = None;
         }
 
         self.hovered_piece_coords = None;
@@ -917,7 +963,9 @@ enum Side {
     White,
 }
 
-const WINDOW_WIDTH: i32 = 1000;
+const CHESSBOARD_WIDTH: i32 = 1000;
+const CHESSBOARD_HEIGHT: i32 = 1000;
+const WINDOW_WIDTH: i32 = 1400;
 const WINDOW_HEIGHT: i32 = 1000;
 
 fn main() {
@@ -929,6 +977,11 @@ fn main() {
     let icon = Image::load_image("./static/other/logo.png").unwrap();
     rl.set_window_icon(icon);
     rl.set_window_title(&thread, "Chessio");
+
+    let background_img = Image::load_image("./static/other/wooden-background.png").unwrap();
+    let background_img_texture = rl
+        .load_texture_from_image(&thread, &background_img)
+        .unwrap();
 
     let mut game = Game::new(&mut rl, &thread);
 
@@ -952,8 +1005,33 @@ fn main() {
 
         let mut d = rl.begin_drawing(&thread);
 
+        d.draw_texture_ex(
+            &background_img_texture,
+            Vector2 { x: 0.0, y: 0.0 },
+            0.0,
+            1.0,
+            Color::WHITE,
+        );
+
+        let (side_on_turn, side_on_turn_color) = match game.move_records.last() {
+            Some(record) => match record.side {
+                Side::Black => ("White", Color::WHITE),
+                Side::White => ("Black", Color::BLACK),
+            },
+            None => ("White", Color::WHITE),
+        };
+
+        d.draw_text("On turn:", CHESSBOARD_WIDTH + 20, 10, 46, Color::WHITE);
+        d.draw_text(
+            side_on_turn,
+            CHESSBOARD_WIDTH + 220,
+            10,
+            46,
+            side_on_turn_color,
+        );
+
         if game.hovered_piece_coords.is_none() {
-            let hovered_tile = game.get_tile_on_coords((mouse_x, mouse_y));
+            let hovered_tile = game.get_tile_on_coords_mut((mouse_x, mouse_y));
 
             match hovered_tile {
                 Some(t) => {
@@ -981,8 +1059,8 @@ fn main() {
                 game.tiles[y][x].render(
                     &mut d,
                     (
-                        x as i32 * (WINDOW_WIDTH / Game::SIZE as i32),
-                        y as i32 * (WINDOW_HEIGHT / Game::SIZE as i32),
+                        x as i32 * (CHESSBOARD_WIDTH / Game::SIZE as i32),
+                        y as i32 * (CHESSBOARD_HEIGHT / Game::SIZE as i32),
                     ),
                     &game.pieces_images,
                 );
