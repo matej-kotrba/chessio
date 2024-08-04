@@ -277,10 +277,19 @@ impl Game {
             return;
         };
         if available_moves.contains(&coords) {
-            let taken_piece_type: Option<PieceType> = if let Some(p) = tile_with_piece.0 {
-                Some(p.kind)
+            let taken_piece_type: Option<PieceType> = if let Some(t) = tile_to_drop {
+                match t.0.piece {
+                    Some(p) => Some(p.kind),
+                    None => None,
+                }
             } else {
                 None
+            };
+
+            let mut moved_piece = if let Some(p) = tile_with_piece.0 {
+                p
+            } else {
+                return;
             };
 
             let move_record = GameMoveRecord {
@@ -293,7 +302,8 @@ impl Game {
 
             self.move_records.push(move_record);
 
-            self.tiles[coords.1][coords.0].piece = tile_with_piece.0;
+            moved_piece.did_move = true;
+            self.tiles[coords.1][coords.0].piece = Some(moved_piece);
             self.tiles[tile_with_piece.1 .1][tile_with_piece.1 .0].piece = None;
         }
 
