@@ -1067,6 +1067,28 @@ fn main() {
             46,
             side_on_turn_color,
         );
+        match game.move_records.last() {
+            Some(lm) => {
+                let last_move_piece = format!("{:?} {:?}", lm.side, lm.kind);
+                let last_move_coords = format!("{:?} -> {:?}", lm.from, lm.to);
+                d.draw_text("Last move:", CHESSBOARD_WIDTH + 20, 110, 28, Color::WHITE);
+                d.draw_text(
+                    &last_move_piece,
+                    CHESSBOARD_WIDTH + 220,
+                    110,
+                    28,
+                    Color::WHITE,
+                );
+                d.draw_text(
+                    &last_move_coords,
+                    CHESSBOARD_WIDTH + 220,
+                    140,
+                    28,
+                    Color::WHITE,
+                );
+            }
+            None => {}
+        }
 
         if game.hovered_piece_coords.is_none() {
             let hovered_tile = game.get_tile_on_coords_mut((mouse_x, mouse_y));
