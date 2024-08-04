@@ -225,15 +225,35 @@ impl Game {
         }
     }
     pub fn start_drag_event(&mut self, (x, y): (f32, f32)) {
-        let tile = self.get_tile_on_coords_mut((x, y));
+        let tile = self.get_tile_on_coords((x, y));
 
-        match tile {
-            Some(t) => {
-                self.hovered_piece_coords = Some(t.1);
+        let t = if let Some(tile) = tile {
+            tile
+        } else {
+            self.hovered_piece_coords = None;
+            return;
+        };
+
+        let piece = if let Some(piece) = t.0.piece {
+            piece
+        } else {
+            self.hovered_piece_coords = None;
+            return;
+        };
+
+        let last_move = self.move_records.last();
+        match last_move {
+            Some(lm) => {
+                if piece.side != lm.side {
+                    self.hovered_piece_coords = Some(t.1);
+                } else {
+                    self.hovered_piece_coords = None;
+                }
             }
-            None => self.hovered_piece_coords = None,
+            None => self.hovered_piece_coords = Some(t.1),
         }
     }
+
     pub fn end_drag_event(&mut self, (x, y): (f32, f32)) {
         let tile_with_piece = if let Some(coords) = self.hovered_piece_coords {
             (self.tiles[coords.1][coords.0].piece, coords)
@@ -1021,11 +1041,19 @@ fn main() {
             None => ("White", Color::WHITE),
         };
 
-        d.draw_text("On turn:", CHESSBOARD_WIDTH + 20, 10, 46, Color::WHITE);
+        d.draw_text("Turn:", CHESSBOARD_WIDTH + 20, 10, 46, Color::WHITE);
+        d.draw_text(
+            &(game.move_records.len() + 1).to_string(),
+            CHESSBOARD_WIDTH + 220,
+            10,
+            46,
+            Color::WHITE,
+        );
+        d.draw_text("Move:", CHESSBOARD_WIDTH + 20, 60, 46, Color::WHITE);
         d.draw_text(
             side_on_turn,
             CHESSBOARD_WIDTH + 220,
-            10,
+            60,
             46,
             side_on_turn_color,
         );
