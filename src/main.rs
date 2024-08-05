@@ -111,7 +111,7 @@ impl Game {
         for y in 0..Self::SIZE {
             for x in 0..Self::SIZE {
                 d.draw_rectangle(
-                    (x * size) as i32,
+                    LEFT_SIDE_PADDING + (x * size) as i32,
                     (y * size) as i32,
                     size as i32,
                     size as i32,
@@ -128,7 +128,7 @@ impl Game {
 
                 for mov in moves {
                     d.draw_circle(
-                        (mov.0 as i32) * tile_size + tile_size / 2,
+                        LEFT_SIDE_PADDING + (mov.0 as i32) * tile_size + tile_size / 2,
                         (mov.1 as i32) * tile_size + tile_size / 2,
                         10.0,
                         Color::GRAY,
@@ -995,8 +995,11 @@ enum Side {
 
 const CHESSBOARD_WIDTH: i32 = 1000;
 const CHESSBOARD_HEIGHT: i32 = 1000;
+const LEFT_SIDE_PADDING: i32 = 50;
 const WINDOW_WIDTH: i32 = 1400;
-const WINDOW_HEIGHT: i32 = 1000;
+const WINDOW_HEIGHT: i32 = 1050;
+const X_AXIS_LABELS: [&str; 8] = ["A", "B", "C", "D", "E", "F", "G", "H"];
+const Y_AXIS_LABELS: [&str; 8] = ["1", "2", "3", "4", "5", "6", "7", "8"];
 
 fn main() {
     let (mut rl, thread) = raylib::init()
@@ -1051,7 +1054,13 @@ fn main() {
             None => ("White", Color::WHITE),
         };
 
-        d.draw_text("Turn:", CHESSBOARD_WIDTH + 20, 10, 46, Color::WHITE);
+        d.draw_text(
+            "Turn:",
+            CHESSBOARD_WIDTH + LEFT_SIDE_PADDING + 20,
+            10,
+            46,
+            Color::WHITE,
+        );
         d.draw_text(
             &(game.move_records.len() + 1).to_string(),
             CHESSBOARD_WIDTH + 220,
@@ -1059,7 +1068,13 @@ fn main() {
             46,
             Color::WHITE,
         );
-        d.draw_text("Move:", CHESSBOARD_WIDTH + 20, 60, 46, Color::WHITE);
+        d.draw_text(
+            "Move:",
+            CHESSBOARD_WIDTH + LEFT_SIDE_PADDING + 20,
+            60,
+            46,
+            Color::WHITE,
+        );
         d.draw_text(
             side_on_turn,
             CHESSBOARD_WIDTH + 220,
@@ -1070,19 +1085,31 @@ fn main() {
         match game.move_records.last() {
             Some(lm) => {
                 let last_move_piece = format!("{:?} {:?}", lm.side, lm.kind);
-                let last_move_coords = format!("{:?} -> {:?}", lm.from, lm.to);
-                d.draw_text("Last move:", CHESSBOARD_WIDTH + 20, 110, 28, Color::WHITE);
                 d.draw_text(
-                    &last_move_piece,
-                    CHESSBOARD_WIDTH + 220,
+                    "Last move:",
+                    CHESSBOARD_WIDTH + LEFT_SIDE_PADDING + 20,
                     110,
                     28,
                     Color::WHITE,
                 );
                 d.draw_text(
-                    &last_move_coords,
-                    CHESSBOARD_WIDTH + 220,
+                    &last_move_piece,
+                    CHESSBOARD_WIDTH + LEFT_SIDE_PADDING + 20,
                     140,
+                    28,
+                    Color::WHITE,
+                );
+                let last_move_text = format!(
+                    "{}{} -> {}{}",
+                    X_AXIS_LABELS[lm.from.0 + 1],
+                    Y_AXIS_LABELS[lm.from.1 + 1],
+                    X_AXIS_LABELS[lm.to.0 + 1],
+                    Y_AXIS_LABELS[lm.to.1 + 1]
+                );
+                d.draw_text(
+                    &last_move_text,
+                    CHESSBOARD_WIDTH + LEFT_SIDE_PADDING + 20,
+                    170,
                     28,
                     Color::WHITE,
                 );
@@ -1090,8 +1117,29 @@ fn main() {
             None => {}
         }
 
+        for (x, y, _) in game.tiles_iter() {
+            d.draw_rectangle(
+                0,
+                (y as i32) * (CHESSBOARD_HEIGHT / 8),
+                LEFT_SIDE_PADDING,
+                CHESSBOARD_HEIGHT / 8,
+                Color::GRAY,
+            )
+        }
+
+        for (x, y, _) in game.tiles_iter() {
+            d.draw_rectangle(
+                LEFT_SIDE_PADDING + (x as i32) * (CHESSBOARD_WIDTH / 8),
+                CHESSBOARD_HEIGHT,
+                CHESSBOARD_WIDTH / 8,
+                WINDOW_HEIGHT - CHESSBOARD_HEIGHT,
+                Color::GRAY,
+            )
+        }
+
         if game.hovered_piece_coords.is_none() {
-            let hovered_tile = game.get_tile_on_coords_mut((mouse_x, mouse_y));
+            let hovered_tile =
+                game.get_tile_on_coords_mut((mouse_x - (LEFT_SIDE_PADDING as f32), mouse_y));
 
             match hovered_tile {
                 Some(t) => {
@@ -1107,7 +1155,7 @@ fn main() {
             }
         }
 
-        game.highlight_tile_by_position((mouse_x, mouse_y));
+        game.highlight_tile_by_position((mouse_x - (LEFT_SIDE_PADDING as f32), mouse_y));
         game.render(&mut d);
 
         for y in 0..Game::SIZE {
@@ -1119,7 +1167,7 @@ fn main() {
                 game.tiles[y][x].render(
                     &mut d,
                     (
-                        x as i32 * (CHESSBOARD_WIDTH / Game::SIZE as i32),
+                        LEFT_SIDE_PADDING + x as i32 * (CHESSBOARD_WIDTH / Game::SIZE as i32),
                         y as i32 * (CHESSBOARD_HEIGHT / Game::SIZE as i32),
                     ),
                     &game.pieces_images,
