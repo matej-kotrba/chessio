@@ -1025,11 +1025,11 @@ fn main() {
         } = rl.get_mouse_position();
 
         if rl.is_mouse_button_pressed(MouseButton::MOUSE_LEFT_BUTTON) {
-            game.start_drag_event((mouse_x, mouse_y));
+            game.start_drag_event((mouse_x - (LEFT_SIDE_PADDING as f32), mouse_y));
         }
 
         if rl.is_mouse_button_released(MouseButton::MOUSE_LEFT_BUTTON) {
-            game.end_drag_event((mouse_x, mouse_y));
+            game.end_drag_event((mouse_x - (LEFT_SIDE_PADDING as f32), mouse_y));
         }
 
         for (_, _, tile) in game.tiles_iter_mut() {
@@ -1124,7 +1124,14 @@ fn main() {
                 LEFT_SIDE_PADDING,
                 CHESSBOARD_HEIGHT / 8,
                 Color::GRAY,
-            )
+            );
+            d.draw_text(
+                X_AXIS_LABELS[y],
+                LEFT_SIDE_PADDING / 2 - 9,
+                (y as i32) * (CHESSBOARD_HEIGHT / 8) + (CHESSBOARD_HEIGHT / 8 / 2) - 14,
+                28,
+                Color::WHITE,
+            );
         }
 
         for (x, y, _) in game.tiles_iter() {
@@ -1134,7 +1141,17 @@ fn main() {
                 CHESSBOARD_WIDTH / 8,
                 WINDOW_HEIGHT - CHESSBOARD_HEIGHT,
                 Color::GRAY,
-            )
+            );
+            d.draw_text(
+                Y_AXIS_LABELS[x],
+                LEFT_SIDE_PADDING
+                    + (x as i32) * (CHESSBOARD_WIDTH / 8)
+                    + (CHESSBOARD_WIDTH / 8) / 2
+                    - 9,
+                WINDOW_HEIGHT - (WINDOW_HEIGHT - CHESSBOARD_HEIGHT) / 2 - 14,
+                28,
+                Color::WHITE,
+            );
         }
 
         if game.hovered_piece_coords.is_none() {
@@ -1153,6 +1170,28 @@ fn main() {
                     d.set_mouse_cursor(MouseCursor::MOUSE_CURSOR_DEFAULT);
                 }
             }
+        }
+
+        let hovered_tile_coords: Option<(usize, usize)> = if let Some((_, (x, y))) =
+            game.get_tile_on_coords((mouse_x - (LEFT_SIDE_PADDING as f32), mouse_y))
+        {
+            Some((x, y))
+        } else {
+            None
+        };
+
+        match hovered_tile_coords {
+            Some(coords) => {
+                let text = format!("{}{}", X_AXIS_LABELS[coords.0], Y_AXIS_LABELS[coords.1]);
+                d.draw_text(
+                    &text,
+                    WINDOW_WIDTH - 100,
+                    WINDOW_HEIGHT - 88,
+                    68,
+                    Color::WHITE,
+                );
+            }
+            _ => {}
         }
 
         game.highlight_tile_by_position((mouse_x - (LEFT_SIDE_PADDING as f32), mouse_y));
