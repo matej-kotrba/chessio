@@ -17,6 +17,7 @@ struct Game {
     pieces_images: PiecesImagesType,
     hovered_piece_coords: Option<(usize, usize)>,
     move_records: Vec<GameMoveRecord>,
+    is_check: Option<Side>,
 }
 
 impl Game {
@@ -101,6 +102,7 @@ impl Game {
             pieces_images,
             hovered_piece_coords: None,
             move_records: Vec::new(),
+            is_check: None,
         };
         game.reset();
 
@@ -123,17 +125,35 @@ impl Game {
     pub fn render_available_moves(&mut self, d: &mut RaylibDrawHandle) {
         match self.hovered_piece_coords {
             Some(coords) => {
-                let moves = self.get_piece_available_moves((coords.0 as i32, coords.1 as i32));
                 let tile_size = CHESSBOARD_WIDTH / (Self::SIZE as i32);
 
-                for mov in moves {
-                    d.draw_circle(
-                        LEFT_SIDE_PADDING + (mov.0 as i32) * tile_size + tile_size / 2,
-                        (mov.1 as i32) * tile_size + tile_size / 2,
-                        10.0,
-                        Color::GRAY,
-                    );
-                    // self.tiles[mov.1][mov.0].bg = Some(Color::YELLOW);
+                match self.is_check {
+                    Some(_) => {
+                        let moves = self.get_piece_available_moves_with_check((
+                            coords.0 as i32,
+                            coords.1 as i32,
+                        ));
+                        for mov in moves {
+                            d.draw_circle(
+                                LEFT_SIDE_PADDING + (mov.0 as i32) * tile_size + tile_size / 2,
+                                (mov.1 as i32) * tile_size + tile_size / 2,
+                                10.0,
+                                Color::GRAY,
+                            );
+                        }
+                    }
+                    None => {
+                        let moves =
+                            self.get_piece_available_moves((coords.0 as i32, coords.1 as i32));
+                        for mov in moves {
+                            d.draw_circle(
+                                LEFT_SIDE_PADDING + (mov.0 as i32) * tile_size + tile_size / 2,
+                                (mov.1 as i32) * tile_size + tile_size / 2,
+                                10.0,
+                                Color::GRAY,
+                            );
+                        }
+                    }
                 }
             }
             _ => {}
@@ -182,8 +202,8 @@ impl Game {
             self.tiles[Self::SIZE - 1][index].piece = Some(Piece::new(*piece, Side::White));
         }
 
-        self.tiles[4][4].piece = Some(Piece::new(PieceType::Pawn, Side::Black));
-        // self.tiles[2][4].piece = Some(Piece::new(PieceType::King, Side::Black));
+        // self.tiles[4][4].piece = Some(Piece::new(PieceType::Pawn, Side::Black));
+        self.tiles[4][7].piece = Some(Piece::new(PieceType::Bishop, Side::Black));
     }
     pub fn get_tile_on_coords_mut(
         &mut self,
@@ -300,11 +320,23 @@ impl Game {
                 taken_piece: taken_piece_type,
             };
 
+            let side = if move_record.side == Side::Black {
+                Side::White
+            } else {
+                Side::Black
+            };
+
             self.move_records.push(move_record);
 
             moved_piece.did_move = true;
             self.tiles[coords.1][coords.0].piece = Some(moved_piece);
             self.tiles[tile_with_piece.1 .1][tile_with_piece.1 .0].piece = None;
+
+            if self.is_check(side, self.tiles) {
+                self.is_check = Some(side);
+            } else {
+                self.is_check = None;
+            }
         }
 
         self.hovered_piece_coords = None;
@@ -336,6 +368,50 @@ impl Game {
                 }
             }
         }
+    }
+    pub fn is_check(&self, check_for: Side, board: [[Tile; Self::SIZE]; Self::SIZE]) -> bool {
+        let mut king: Option<(usize, usize)> = None;
+
+        for y in 0..board.len() {
+            for x in 0..board[y].len() {
+                let piece = if let Some(p) = board[y][x].piece {
+                    p
+                } else {
+                    continue;
+                };
+                if piece.kind == PieceType::King && piece.side == check_for {
+                    king = Some((x, y));
+                }
+            }
+        }
+
+        match king {
+            Some(k) => {
+                for y in 0..board.len() {
+                    for x in 0..board[y].len() {
+                        match board[y][x].piece {
+                            Some(p) => {
+                                if p.side == check_for {
+                                    continue;
+                                }
+                            }
+                            None => {
+                                continue;
+                            }
+                        }
+                        let available_moves = self.get_piece_available_moves((x as i32, y as i32));
+                        if available_moves.contains(&(k.0, k.1)) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            None => {
+                return false;
+            }
+        }
+
+        false
     }
     fn get_distance_between_direct_coords(
         (x1, y1): (usize, usize),
@@ -798,7 +874,36 @@ impl Game {
             }
         }
 
-        // println!("{:#?}", available_moves);
+        available_moves
+    }
+    pub fn get_piece_available_moves_with_check(
+        &mut self,
+        (x, y): (i32, i32),
+    ) -> Vec<(usize, usize)> {
+        let mut available_moves = Vec::new();
+        let moves = self.get_piece_available_moves((x, y));
+        let check_for = if let Some(last) = self.move_records.last() {
+            if last.side == Side::Black {
+                Side::White
+            } else {
+                Side::Black
+            }
+        } else {
+            Side::White
+        };
+
+        for (move_x, move_y) in moves {
+            let board_copy = self.tiles.clone();
+            self.tiles[move_y][move_x].piece = self.tiles[y as usize][x as usize].piece;
+            self.tiles[y as usize][x as usize].piece = None;
+            if !self.is_check(check_for, self.tiles) {
+                println!("asdasd");
+                available_moves.push((move_x, move_y));
+            }
+            self.tiles = board_copy;
+        }
+
+        println!("{:?}", available_moves);
 
         available_moves
     }
@@ -1082,6 +1187,24 @@ fn main() {
             46,
             side_on_turn_color,
         );
+
+        match game.is_check {
+            Some(side) => {
+                d.draw_text(
+                    "CHECK",
+                    CHESSBOARD_WIDTH + LEFT_SIDE_PADDING + 20,
+                    WINDOW_HEIGHT - 50,
+                    46,
+                    if side == Side::Black {
+                        Color::BLACK
+                    } else {
+                        Color::WHITE
+                    },
+                );
+            }
+            None => {}
+        }
+
         match game.move_records.last() {
             Some(lm) => {
                 let last_move_piece = format!("{:?} {:?}", lm.side, lm.kind);
@@ -1101,10 +1224,10 @@ fn main() {
                 );
                 let last_move_text = format!(
                     "{}{} -> {}{}",
-                    X_AXIS_LABELS[lm.from.0 + 1],
-                    Y_AXIS_LABELS[lm.from.1 + 1],
-                    X_AXIS_LABELS[lm.to.0 + 1],
-                    Y_AXIS_LABELS[lm.to.1 + 1]
+                    X_AXIS_LABELS[lm.from.0],
+                    Y_AXIS_LABELS[lm.from.1],
+                    X_AXIS_LABELS[lm.to.0],
+                    Y_AXIS_LABELS[lm.to.1]
                 );
                 d.draw_text(
                     &last_move_text,
@@ -1126,7 +1249,7 @@ fn main() {
                 Color::GRAY,
             );
             d.draw_text(
-                X_AXIS_LABELS[y],
+                Y_AXIS_LABELS[7 - y],
                 LEFT_SIDE_PADDING / 2 - 9,
                 (y as i32) * (CHESSBOARD_HEIGHT / 8) + (CHESSBOARD_HEIGHT / 8 / 2) - 14,
                 28,
@@ -1143,7 +1266,7 @@ fn main() {
                 Color::GRAY,
             );
             d.draw_text(
-                Y_AXIS_LABELS[x],
+                X_AXIS_LABELS[x],
                 LEFT_SIDE_PADDING
                     + (x as i32) * (CHESSBOARD_WIDTH / 8)
                     + (CHESSBOARD_WIDTH / 8) / 2
@@ -1182,7 +1305,7 @@ fn main() {
 
         match hovered_tile_coords {
             Some(coords) => {
-                let text = format!("{}{}", X_AXIS_LABELS[coords.0], Y_AXIS_LABELS[coords.1]);
+                let text = format!("{}{}", X_AXIS_LABELS[coords.0], Y_AXIS_LABELS[7 - coords.1]);
                 d.draw_text(
                     &text,
                     WINDOW_WIDTH - 100,
