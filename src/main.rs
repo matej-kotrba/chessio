@@ -18,6 +18,7 @@ struct Game {
     hovered_piece_coords: Option<(usize, usize)>,
     move_records: Vec<GameMoveRecord>,
     is_check: Option<Side>,
+    victor: Option<Side>,
 }
 
 impl Game {
@@ -103,6 +104,7 @@ impl Game {
             hovered_piece_coords: None,
             move_records: Vec::new(),
             is_check: None,
+            victor: None,
         };
         game.reset();
 
@@ -320,20 +322,40 @@ impl Game {
                 taken_piece: taken_piece_type,
             };
 
-            let side = if move_record.side == Side::Black {
-                Side::White
+            let sides = if move_record.side == Side::Black {
+                (Side::White, Side::Black)
             } else {
-                Side::Black
+                (Side::Black, Side::White)
             };
 
-            self.move_records.push(move_record);
-
-            moved_piece.did_move = true;
+            let board_copy = self.tiles.clone();
             self.tiles[coords.1][coords.0].piece = Some(moved_piece);
             self.tiles[tile_with_piece.1 .1][tile_with_piece.1 .0].piece = None;
+            if self.is_check(sides.1, self.tiles) {
+                self.tiles = board_copy;
+                self.hovered_piece_coords = None;
+                return;
+            }
 
-            if self.is_check(side, self.tiles) {
-                self.is_check = Some(side);
+            moved_piece.did_move = true;
+            self.move_records.push(move_record);
+
+            if self.is_check(sides.0, self.tiles) {
+                self.is_check = Some(sides.0);
+
+                let mut can_continue_playing = false;
+                'a: for y in 0..self.tiles.len() {
+                    for x in 0..self.tiles.len() {
+                        let moves = self.get_piece_available_moves_with_check((x as i32, y as i32));
+                        if moves.len() > 0 {
+                            can_continue_playing = true;
+                            break 'a;
+                        }
+                    }
+                }
+                if !can_continue_playing {
+                    self.victor = Some(sides.0);
+                }
             } else {
                 self.is_check = None;
             }
@@ -897,7 +919,6 @@ impl Game {
             self.tiles[move_y][move_x].piece = self.tiles[y as usize][x as usize].piece;
             self.tiles[y as usize][x as usize].piece = None;
             if !self.is_check(check_for, self.tiles) {
-                println!("asdasd");
                 available_moves.push((move_x, move_y));
             }
             self.tiles = board_copy;
@@ -1353,6 +1374,19 @@ fn main() {
                 }
             }
             _ => {}
+        }
+
+        match game.victor {
+            Some(v) => {
+                d.draw_text(
+                    "CHECKMATE",
+                    LEFT_SIDE_PADDING + (CHESSBOARD_WIDTH / 2) - 50,
+                    (CHESSBOARD_HEIGHT / 2) - 10,
+                    48,
+                    Color::RED,
+                );
+            }
+            None => {}
         }
     }
 }
