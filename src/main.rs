@@ -159,6 +159,7 @@ impl Game {
                     None => {
                         let moves =
                             self.get_piece_available_moves((coords.0 as i32, coords.1 as i32));
+
                         for mov in moves {
                             let board_copy = self.tiles.clone();
                             self.tiles[mov.1][mov.0].piece = self.tiles[coords.1][coords.0].piece;
@@ -206,7 +207,7 @@ impl Game {
     pub fn reset(&mut self) {
         use PieceType::*;
         let backrow: [PieceType; Self::SIZE] =
-            [Rook, Knight, Bishop, Queen, King, Bishop, Knight, Rook];
+            [Rook, Knight, Bishop, Queen, Pawn, Bishop, Knight, Rook];
         let frontrow: [PieceType; Self::SIZE] = [Pawn; Self::SIZE];
 
         for (index, piece) in backrow.iter().enumerate() {
@@ -224,9 +225,7 @@ impl Game {
         for (index, piece) in backrow.iter().enumerate() {
             self.tiles[Self::SIZE - 1][index].piece = Some(Piece::new(*piece, Side::White));
         }
-
-        // self.tiles[4][4].piece = Some(Piece::new(PieceType::Pawn, Side::Black));
-        self.tiles[4][7].piece = Some(Piece::new(PieceType::Bishop, Side::Black));
+        self.tiles[6][3].piece = Some(Piece::new(PieceType::Queen, Side::White));
     }
     pub fn get_tile_on_coords_mut(
         &mut self,
@@ -293,7 +292,13 @@ impl Game {
                     self.hovered_piece_coords = None;
                 }
             }
-            None => self.hovered_piece_coords = Some(t.1),
+            None => {
+                if piece.side == Side::White {
+                    self.hovered_piece_coords = Some(t.1)
+                } else {
+                    self.hovered_piece_coords = None;
+                }
+            }
         }
     }
 
@@ -367,10 +372,20 @@ impl Game {
                 let mut can_continue_playing = false;
                 'a: for y in 0..self.tiles.len() {
                     for x in 0..self.tiles.len() {
-                        let moves = self.get_piece_available_moves_with_check((x as i32, y as i32));
-                        if moves.len() > 0 {
-                            can_continue_playing = true;
-                            break 'a;
+                        match self.tiles[y][x].piece {
+                            Some(piece) => {
+                                if piece.side == sides.0 {
+                                    println!("{:?}", piece.side);
+                                    let moves = self
+                                        .get_piece_available_moves_with_check((x as i32, y as i32));
+                                    if moves.len() > 0 {
+                                        println!("{}{}: {:?}", x, y, moves);
+                                        can_continue_playing = true;
+                                        break 'a;
+                                    }
+                                }
+                            }
+                            _ => {}
                         }
                     }
                 }
@@ -925,21 +940,12 @@ impl Game {
     ) -> Vec<(usize, usize)> {
         let mut available_moves = Vec::new();
         let moves = self.get_piece_available_moves((x, y));
-        let check_for = if let Some(last) = self.move_records.last() {
-            if last.side == Side::Black {
-                Side::White
-            } else {
-                Side::Black
-            }
-        } else {
-            Side::White
-        };
 
         for (move_x, move_y) in moves {
             let board_copy = self.tiles.clone();
             self.tiles[move_y][move_x].piece = self.tiles[y as usize][x as usize].piece;
             self.tiles[y as usize][x as usize].piece = None;
-            if !self.is_check(check_for, self.tiles) {
+            if !self.is_check(self.get_side_on_move(), self.tiles) {
                 available_moves.push((move_x, move_y));
             }
             self.tiles = board_copy;
