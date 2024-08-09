@@ -124,6 +124,18 @@ impl Game {
             }
         }
     }
+    pub fn get_side_on_move(&self) -> Side {
+        match self.move_records.last() {
+            Some(mr) => {
+                if mr.side == Side::White {
+                    Side::Black
+                } else {
+                    Side::White
+                }
+            }
+            _ => Side::White,
+        }
+    }
     pub fn render_available_moves(&mut self, d: &mut RaylibDrawHandle) {
         match self.hovered_piece_coords {
             Some(coords) => {
@@ -148,6 +160,15 @@ impl Game {
                         let moves =
                             self.get_piece_available_moves((coords.0 as i32, coords.1 as i32));
                         for mov in moves {
+                            let board_copy = self.tiles.clone();
+                            self.tiles[mov.1][mov.0].piece = self.tiles[coords.1][coords.0].piece;
+                            self.tiles[coords.1][coords.0].piece = None;
+                            if self.is_check(self.get_side_on_move(), self.tiles) {
+                                self.tiles = board_copy;
+                                continue;
+                            }
+                            self.tiles = board_copy;
+
                             d.draw_circle(
                                 LEFT_SIDE_PADDING + (mov.0 as i32) * tile_size + tile_size / 2,
                                 (mov.1 as i32) * tile_size + tile_size / 2,
