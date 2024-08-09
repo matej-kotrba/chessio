@@ -1,3 +1,7 @@
+use raylib::color::Color;
+
+pub type TileColorSchema = (Color, Color);
+
 #[derive(Debug, Copy, Clone)]
 pub struct Piece {
     pub kind: PieceType,

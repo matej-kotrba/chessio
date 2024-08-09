@@ -28,83 +28,28 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn new(rl: &mut RaylibHandle, thread: &RaylibThread) -> Self {
+    pub fn new(
+        rl: &mut RaylibHandle,
+        thread: &RaylibThread,
+        custom_imgs: Option<PiecesImagesType>,
+        custom_tile_color_schema: Option<TileColorSchema>,
+    ) -> Self {
         let mut tiles = [[Tile::new(); CHESSBOARD_SIZE]; CHESSBOARD_SIZE];
 
+        let color_schema = custom_tile_color_schema.unwrap_or(DEFAULT_TILE_COLOR_SCHEMA);
         for y in 0..CHESSBOARD_SIZE {
             for x in 0..CHESSBOARD_SIZE {
                 if (x + y % 2) % 2 == 0 {
-                    tiles[y][x].color = Color::WHITE;
+                    tiles[y][x].color = color_schema.0;
+                } else {
+                    tiles[y][x].color = color_schema.1;
                 }
             }
         }
 
-        let pieces_images: PiecesImagesType = HashMap::from([
-            (
-                (PieceType::Rook, Side::Black),
-                rl.load_texture(thread, "./static/pieces/pngs/RookBlack.png")
-                    .unwrap(),
-            ),
-            (
-                (PieceType::Knight, Side::Black),
-                rl.load_texture(thread, "./static/pieces/pngs/KnightBlack.png")
-                    .unwrap(),
-            ),
-            (
-                (PieceType::Bishop, Side::Black),
-                rl.load_texture(thread, "./static/pieces/pngs/BishopBlack.png")
-                    .unwrap(),
-            ),
-            (
-                (PieceType::Queen, Side::Black),
-                rl.load_texture(thread, "./static/pieces/pngs/QueenBlack.png")
-                    .unwrap(),
-            ),
-            (
-                (PieceType::King, Side::Black),
-                rl.load_texture(thread, "./static/pieces/pngs/KingBlack.png")
-                    .unwrap(),
-            ),
-            (
-                (PieceType::Pawn, Side::Black),
-                rl.load_texture(thread, "./static/pieces/pngs/PawnBlack.png")
-                    .unwrap(),
-            ),
-            (
-                (PieceType::Rook, Side::White),
-                rl.load_texture(thread, "./static/pieces/pngs/RookWhite.png")
-                    .unwrap(),
-            ),
-            (
-                (PieceType::Knight, Side::White),
-                rl.load_texture(thread, "./static/pieces/pngs/KnightWhite.png")
-                    .unwrap(),
-            ),
-            (
-                (PieceType::Bishop, Side::White),
-                rl.load_texture(thread, "./static/pieces/pngs/BishopWhite.png")
-                    .unwrap(),
-            ),
-            (
-                (PieceType::Queen, Side::White),
-                rl.load_texture(thread, "./static/pieces/pngs/QueenWhite.png")
-                    .unwrap(),
-            ),
-            (
-                (PieceType::King, Side::White),
-                rl.load_texture(thread, "./static/pieces/pngs/KingWhite.png")
-                    .unwrap(),
-            ),
-            (
-                (PieceType::Pawn, Side::White),
-                rl.load_texture(thread, "./static/pieces/pngs/PawnWhite.png")
-                    .unwrap(),
-            ),
-        ]);
-
         let mut game = Game {
             tiles,
-            pieces_images,
+            pieces_images: custom_imgs.unwrap_or(getDefaultPieceImages(rl, thread)),
             hovered_piece_coords: None,
             move_records: Vec::new(),
             is_check: None,

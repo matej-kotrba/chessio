@@ -18,7 +18,7 @@ fn main() {
         .load_texture_from_image(&thread, &background_img)
         .unwrap();
 
-    let mut game = Game::new(&mut rl, &thread);
+    let mut game = Game::new(&mut rl, &thread, None, None);
 
     while !rl.window_should_close() {
         let Vector2 {
