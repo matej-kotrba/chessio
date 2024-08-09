@@ -214,7 +214,7 @@ fn main() {
             _ => {}
         }
 
-        game.highlight_tile_by_position((mouse_x - (LEFT_SIDE_PADDING as f32), mouse_y));
+        game.highlight_tile_by_coords((mouse_x - (LEFT_SIDE_PADDING as f32), mouse_y));
         game.render(&mut d);
 
         for y in 0..CHESSBOARD_SIZE {

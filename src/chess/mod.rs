@@ -60,18 +60,20 @@ impl Game {
         game
     }
     pub fn render(&self, d: &mut RaylibDrawHandle) {
-        let size = CHESSBOARD_WIDTH as usize / CHESSBOARD_SIZE;
-        for y in 0..CHESSBOARD_SIZE {
-            for x in 0..CHESSBOARD_SIZE {
-                d.draw_rectangle(
-                    LEFT_SIDE_PADDING + (x * size) as i32,
-                    (y * size) as i32,
-                    size as i32,
-                    size as i32,
-                    self.tiles[y][x].bg.unwrap_or(self.tiles[y][x].color),
-                );
-            }
+        let size = Self::get_tile_actuall_size() as usize;
+
+        for (x, y, _) in self.tiles_iter() {
+            d.draw_rectangle(
+                LEFT_SIDE_PADDING + (x * size) as i32,
+                (y * size) as i32,
+                size as i32,
+                size as i32,
+                self.tiles[y][x].bg.unwrap_or(self.tiles[y][x].color),
+            );
         }
+    }
+    fn get_tile_actuall_size() -> i32 {
+        CHESSBOARD_WIDTH / (CHESSBOARD_SIZE as i32)
     }
     pub fn get_side_on_move(&self) -> Side {
         match self.move_records.last() {
@@ -85,6 +87,7 @@ impl Game {
             _ => Side::White,
         }
     }
+    //TODO:
     pub fn render_available_moves(&mut self, d: &mut RaylibDrawHandle) {
         match self.hovered_piece_coords {
             Some(coords) => {
@@ -139,12 +142,13 @@ impl Game {
         (x, y): (f32, f32),
     ) {
         let piece_img = self.pieces_images.get(&(piece, side));
+        let tile_size = Self::get_tile_actuall_size();
         match piece_img {
             Some(img) => d.draw_texture_ex(
                 img,
                 Vector2 {
-                    x: x - ((CHESSBOARD_WIDTH / CHESSBOARD_SIZE as i32) / 2) as f32,
-                    y: y - ((CHESSBOARD_HEIGHT / CHESSBOARD_SIZE as i32) / 2) as f32,
+                    x: x - (tile_size / 2) as f32,
+                    y: y - (tile_size / 2) as f32,
                 },
                 0.0,
                 1.0,
@@ -179,8 +183,8 @@ impl Game {
         &mut self,
         (x, y): (f32, f32),
     ) -> Option<(&mut Tile, (usize, usize))> {
-        let tile_x = (x / (CHESSBOARD_WIDTH as f32 / CHESSBOARD_SIZE as f32)) as i32;
-        let tile_y = (y / (CHESSBOARD_HEIGHT as f32 / CHESSBOARD_SIZE as f32)) as i32;
+        let tile_x = (x / Self::get_tile_actuall_size() as f32) as i32;
+        let tile_y = (y / Self::get_tile_actuall_size() as f32) as i32;
 
         if tile_x >= 0
             && tile_x < CHESSBOARD_SIZE as i32
@@ -196,14 +200,10 @@ impl Game {
         None
     }
     pub fn get_tile_on_coords(&self, (x, y): (f32, f32)) -> Option<(&Tile, (usize, usize))> {
-        let tile_x = (x / (CHESSBOARD_WIDTH as f32 / CHESSBOARD_SIZE as f32)) as i32;
-        let tile_y = (y / (CHESSBOARD_HEIGHT as f32 / CHESSBOARD_SIZE as f32)) as i32;
+        let tile_x = (x / Self::get_tile_actuall_size() as f32) as i32;
+        let tile_y = (y / Self::get_tile_actuall_size() as f32) as i32;
 
-        if tile_x >= 0
-            && tile_x < CHESSBOARD_SIZE as i32
-            && tile_y >= 0
-            && tile_y < CHESSBOARD_SIZE as i32
-        {
+        if Self::is_tile_in_board((tile_x, tile_y)) {
             return Some((
                 &self.tiles[tile_y as usize][tile_x as usize],
                 (tile_x as usize, tile_y as usize),
@@ -212,7 +212,8 @@ impl Game {
 
         None
     }
-    pub fn highlight_tile_by_position(&mut self, (x, y): (f32, f32)) {
+    //TODO:
+    pub fn highlight_tile_by_coords(&mut self, (x, y): (f32, f32)) {
         let tile = self.get_tile_on_coords_mut((x, y));
 
         match tile {
@@ -222,6 +223,7 @@ impl Game {
             None => {}
         }
     }
+    //TODO:
     pub fn start_drag_event(&mut self, (x, y): (f32, f32)) {
         let tile = self.get_tile_on_coords((x, y));
 
@@ -258,6 +260,7 @@ impl Game {
         }
     }
 
+    //TODO:
     pub fn end_drag_event(&mut self, (x, y): (f32, f32)) {
         let tile_with_piece = if let Some(coords) = self.hovered_piece_coords {
             (self.tiles[coords.1][coords.0].piece, coords)
@@ -362,7 +365,7 @@ impl Game {
         (move_x, move_y): (i32, i32),
         piece_side: Side,
     ) {
-        if Self::is_coord_in_board(&self, (temp_x as i32, temp_y as i32)) {
+        if Self::is_tile_in_board((temp_x as i32, temp_y as i32)) {
             let p = self.is_piece_on_coords((temp_x, temp_y));
             match p.1 {
                 Some(side) => {
@@ -461,19 +464,19 @@ impl Game {
         match piece.kind {
             PieceType::Pawn => match piece.side {
                 Side::Black => {
-                    if self.is_coord_in_board((x, y + 1)) && !self.is_piece_on_coords((x, y + 1)).0
+                    if Self::is_tile_in_board((x, y + 1)) && !self.is_piece_on_coords((x, y + 1)).0
                     {
                         available_moves.push((x as usize, (y + 1) as usize));
 
                         if piece.did_move == false
-                            && self.is_coord_in_board((x, y + 2))
+                            && Self::is_tile_in_board((x, y + 2))
                             && !self.is_piece_on_coords((x, y + 2)).0
                         {
                             available_moves.push((x as usize, (y + 2) as usize));
                         }
                     }
 
-                    let piece_on_coords = if self.is_coord_in_board((x - 1, y + 1)) {
+                    let piece_on_coords = if Self::is_tile_in_board((x - 1, y + 1)) {
                         self.is_piece_on_coords((x - 1, y + 1))
                     } else {
                         (false, None)
@@ -481,7 +484,7 @@ impl Game {
 
                     match piece_on_coords.1 {
                         Some(p) => {
-                            if self.is_coord_in_board((x - 1, y + 1))
+                            if Self::is_tile_in_board((x - 1, y + 1))
                                 && self.is_piece_on_coords((x - 1, y + 1)).0
                                 && piece.side != p
                             {
@@ -491,7 +494,7 @@ impl Game {
                         None => {}
                     }
 
-                    let piece_on_coords = if self.is_coord_in_board((x + 1, y + 1)) {
+                    let piece_on_coords = if Self::is_tile_in_board((x + 1, y + 1)) {
                         self.is_piece_on_coords((x + 1, y + 1))
                     } else {
                         (false, None)
@@ -499,7 +502,7 @@ impl Game {
 
                     match piece_on_coords.1 {
                         Some(p) => {
-                            if self.is_coord_in_board((x + 1, y + 1))
+                            if Self::is_tile_in_board((x + 1, y + 1))
                                 && self.is_piece_on_coords((x + 1, y + 1)).0
                                 && piece.side != p
                             {
@@ -510,19 +513,19 @@ impl Game {
                     }
                 }
                 Side::White => {
-                    if self.is_coord_in_board((x, y - 1)) && !self.is_piece_on_coords((x, y - 1)).0
+                    if Self::is_tile_in_board((x, y - 1)) && !self.is_piece_on_coords((x, y - 1)).0
                     {
                         available_moves.push((x as usize, (y - 1) as usize));
 
                         if piece.did_move == false
-                            && self.is_coord_in_board((x, y - 2))
+                            && Self::is_tile_in_board((x, y - 2))
                             && !self.is_piece_on_coords((x, y - 2)).0
                         {
                             available_moves.push((x as usize, (y - 2) as usize));
                         }
                     }
 
-                    let piece_on_coords = if self.is_coord_in_board((x - 1, y - 1)) {
+                    let piece_on_coords = if Self::is_tile_in_board((x - 1, y - 1)) {
                         self.is_piece_on_coords((x - 1, y - 1))
                     } else {
                         (false, None)
@@ -530,7 +533,7 @@ impl Game {
 
                     match piece_on_coords.1 {
                         Some(p) => {
-                            if self.is_coord_in_board((x - 1, y - 1))
+                            if Self::is_tile_in_board((x - 1, y - 1))
                                 && self.is_piece_on_coords((x - 1, y - 1)).0
                                 && piece.side != p
                             {
@@ -540,7 +543,7 @@ impl Game {
                         None => {}
                     }
 
-                    let piece_on_coords = if self.is_coord_in_board((x + 1, y - 1)) {
+                    let piece_on_coords = if Self::is_tile_in_board((x + 1, y - 1)) {
                         self.is_piece_on_coords((x + 1, y - 1))
                     } else {
                         (false, None)
@@ -548,7 +551,7 @@ impl Game {
 
                     match piece_on_coords.1 {
                         Some(p) => {
-                            if self.is_coord_in_board((x + 1, y - 1))
+                            if Self::is_tile_in_board((x + 1, y - 1))
                                 && self.is_piece_on_coords((x + 1, y - 1)).0
                                 && piece.side != p
                             {
@@ -783,7 +786,7 @@ impl Game {
                         (x - 2, y - 1),
                     ];
                     for coords in coords {
-                        if self.is_coord_in_board(coords)
+                        if Self::is_tile_in_board(coords)
                             && self.is_piece_on_coords(coords).1 != Some(Side::Black)
                         {
                             available_moves.push((coords.0 as usize, coords.1 as usize));
@@ -803,7 +806,7 @@ impl Game {
                         (x - 2, y - 1),
                     ];
                     for coords in coords {
-                        if self.is_coord_in_board(coords)
+                        if Self::is_tile_in_board(coords)
                             && self.is_piece_on_coords(coords).1 != Some(Side::White)
                         {
                             available_moves.push((coords.0 as usize, coords.1 as usize));
@@ -841,7 +844,7 @@ impl Game {
                         match enemy_king_coords {
                             Some(enemy_king_coords) => {
                                 for coords in coords_around_king {
-                                    if self.is_coord_in_board(coords)
+                                    if Self::is_tile_in_board(coords)
                                         && Self::get_distance_between_direct_coords(
                                             (coords.0 as usize, coords.1 as usize),
                                             enemy_king_coords,
@@ -873,7 +876,7 @@ impl Game {
                         match enemy_king_coords {
                             Some(enemy_king_coords) => {
                                 for coords in coords_around_king {
-                                    if self.is_coord_in_board(coords)
+                                    if Self::is_tile_in_board(coords)
                                         && Self::get_distance_between_direct_coords(
                                             (coords.0 as usize, coords.1 as usize),
                                             enemy_king_coords,
@@ -923,7 +926,7 @@ impl Game {
             None => (false, None),
         }
     }
-    fn is_coord_in_board(&self, (x, y): (i32, i32)) -> bool {
+    fn is_tile_in_board((x, y): (i32, i32)) -> bool {
         return x >= 0 && y >= 0 && x < CHESSBOARD_SIZE as i32 && y < CHESSBOARD_SIZE as i32;
     }
 
