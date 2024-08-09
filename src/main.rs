@@ -207,7 +207,7 @@ impl Game {
     pub fn reset(&mut self) {
         use PieceType::*;
         let backrow: [PieceType; Self::SIZE] =
-            [Rook, Knight, Bishop, Queen, Pawn, Bishop, Knight, Rook];
+            [Rook, Knight, Bishop, Queen, King, Bishop, Knight, Rook];
         let frontrow: [PieceType; Self::SIZE] = [Pawn; Self::SIZE];
 
         for (index, piece) in backrow.iter().enumerate() {
@@ -225,7 +225,6 @@ impl Game {
         for (index, piece) in backrow.iter().enumerate() {
             self.tiles[Self::SIZE - 1][index].piece = Some(Piece::new(*piece, Side::White));
         }
-        self.tiles[6][3].piece = Some(Piece::new(PieceType::Queen, Side::White));
     }
     pub fn get_tile_on_coords_mut(
         &mut self,
