@@ -116,7 +116,7 @@ impl Game {
                             let board_copy = self.tiles.clone();
                             self.tiles[mov.1][mov.0].piece = self.tiles[coords.1][coords.0].piece;
                             self.tiles[coords.1][coords.0].piece = None;
-                            if self.is_check(self.get_side_on_move(), self.tiles) {
+                            if self.is_check(self.get_side_on_move()) {
                                 self.tiles = board_copy;
                                 continue;
                             }
@@ -260,32 +260,31 @@ impl Game {
         }
     }
 
-    //TODO:
     pub fn end_drag_event(&mut self, (x, y): (f32, f32)) {
-        let tile_with_piece = if let Some(coords) = self.hovered_piece_coords {
+        let starting_tile = if let Some(coords) = self.hovered_piece_coords {
             (self.tiles[coords.1][coords.0].piece, coords)
         } else {
             return;
         };
 
-        let piece = if let Some(p) = tile_with_piece.0 {
+        let piece = if let Some(p) = starting_tile.0 {
             p
         } else {
             return;
         };
 
-        let available_moves = self
-            .get_piece_available_moves((tile_with_piece.1 .0 as i32, tile_with_piece.1 .1 as i32));
-
         let tile_to_drop = self.get_tile_on_coords((x, y));
-        let coords = if let Some(tile) = tile_to_drop {
+        let to = if let Some(tile) = tile_to_drop {
             tile.1
         } else {
             return;
         };
-        if available_moves.contains(&coords) {
-            let taken_piece_type: Option<PieceType> = if let Some(t) = tile_to_drop {
-                match t.0.piece {
+
+        let available_moves =
+            self.get_piece_available_moves((starting_tile.1 .0 as i32, starting_tile.1 .1 as i32));
+        if available_moves.contains(&to) {
+            let taken_piece_type: Option<PieceType> = if let Some((t, _)) = tile_to_drop {
+                match t.piece {
                     Some(p) => Some(p.kind),
                     None => None,
                 }
@@ -293,15 +292,15 @@ impl Game {
                 None
             };
 
-            let mut moved_piece = if let Some(p) = tile_with_piece.0 {
+            let mut moved_piece = if let Some(p) = starting_tile.0 {
                 p
             } else {
                 return;
             };
 
             let move_record = GameMoveRecord {
-                from: (tile_with_piece.1 .0, tile_with_piece.1 .0),
-                to: coords,
+                from: (starting_tile.1 .0, starting_tile.1 .0),
+                to,
                 kind: piece.kind,
                 side: piece.side,
                 taken_piece: taken_piece_type,
@@ -314,9 +313,9 @@ impl Game {
             };
 
             let board_copy = self.tiles.clone();
-            self.tiles[coords.1][coords.0].piece = Some(moved_piece);
-            self.tiles[tile_with_piece.1 .1][tile_with_piece.1 .0].piece = None;
-            if self.is_check(sides.1, self.tiles) {
+            self.tiles[to.1][to.0].piece = Some(moved_piece);
+            self.tiles[starting_tile.1 .1][starting_tile.1 .0].piece = None;
+            if self.is_check(sides.1) {
                 self.tiles = board_copy;
                 self.hovered_piece_coords = None;
                 return;
@@ -325,7 +324,7 @@ impl Game {
             moved_piece.did_move = true;
             self.move_records.push(move_record);
 
-            if self.is_check(sides.0, self.tiles) {
+            if self.is_check(sides.0) {
                 self.is_check = Some(sides.0);
 
                 let mut can_continue_playing = false;
@@ -334,11 +333,9 @@ impl Game {
                         match self.tiles[y][x].piece {
                             Some(piece) => {
                                 if piece.side == sides.0 {
-                                    println!("{:?}", piece.side);
                                     let moves = self
                                         .get_piece_available_moves_with_check((x as i32, y as i32));
                                     if moves.len() > 0 {
-                                        println!("{}{}: {:?}", x, y, moves);
                                         can_continue_playing = true;
                                         break 'a;
                                     }
@@ -386,49 +383,40 @@ impl Game {
             }
         }
     }
-    pub fn is_check(
-        &self,
-        check_for: Side,
-        board: [[Tile; CHESSBOARD_SIZE]; CHESSBOARD_SIZE],
-    ) -> bool {
-        let mut king: Option<(usize, usize)> = None;
+    pub fn is_check(&self, check_for: Side) -> bool {
+        let mut king_coords: Option<(usize, usize)> = None;
 
-        for y in 0..board.len() {
-            for x in 0..board[y].len() {
-                let piece = if let Some(p) = board[y][x].piece {
-                    p
-                } else {
-                    continue;
-                };
-                if piece.kind == PieceType::King && piece.side == check_for {
-                    king = Some((x, y));
-                }
+        for (x, y, tile) in self.tiles_iter() {
+            let piece = if let Some(p) = tile.piece {
+                p
+            } else {
+                continue;
+            };
+            if piece.kind == PieceType::King && piece.side == check_for {
+                king_coords = Some((x, y));
             }
         }
 
-        match king {
-            Some(k) => {
-                for y in 0..board.len() {
-                    for x in 0..board[y].len() {
-                        match board[y][x].piece {
-                            Some(p) => {
-                                if p.side == check_for {
-                                    continue;
-                                }
-                            }
-                            None => {
-                                continue;
-                            }
-                        }
-                        let available_moves = self.get_piece_available_moves((x as i32, y as i32));
-                        if available_moves.contains(&(k.0, k.1)) {
-                            return true;
-                        }
-                    }
+        let king_coords = if let Some(coords) = king_coords {
+            coords
+        } else {
+            return false;
+        };
+
+        for (x, y, tile) in self.tiles_iter() {
+            if let Some(p) = tile.piece {
+                if p.side == check_for {
+                    continue;
                 }
-            }
-            None => {
-                return false;
+            } else {
+                continue;
+            };
+
+            if self
+                .get_piece_available_moves((x as i32, y as i32))
+                .contains(&(king_coords.0, king_coords.1))
+            {
+                return true;
             }
         }
 
@@ -448,18 +436,18 @@ impl Game {
     }
     pub fn get_piece_available_moves(&self, (x, y): (i32, i32)) -> Vec<(usize, usize)> {
         let mut available_moves: Vec<(usize, usize)> = Vec::new();
+
+        if !Self::is_tile_in_board((x, y)) {
+            return available_moves;
+        }
+
         let piece = self.tiles[y as usize][x as usize].piece;
 
-        let piece = if let Some(piece) = piece {
+        let piece: Piece = if let Some(piece) = piece {
             piece
         } else {
             return available_moves;
         };
-
-        // println!(
-        //     "Piece: {:#?}, side: {:#?}, position: {} {}",
-        //     piece.kind, piece.side, x, y
-        // );
 
         match piece.kind {
             PieceType::Pawn => match piece.side {
@@ -562,258 +550,81 @@ impl Game {
                     }
                 }
             },
-            PieceType::Rook => match piece.side {
-                Side::Black => {
+            PieceType::Rook => {
+                let moves = [
+                    ((x + 1, y), (1, 0)),
+                    ((x - 1, y), (-1, 0)),
+                    ((x, y + 1), (0, 1)),
+                    ((x, y - 1), (0, -1)),
+                ];
+
+                for (start, multiplier) in moves {
                     self.get_pieces_linear_moves(
                         &mut available_moves,
-                        (x + 1, y),
-                        (1, 0),
-                        Side::Black,
-                    );
-                    self.get_pieces_linear_moves(
-                        &mut available_moves,
-                        (x - 1, y),
-                        (-1, 0),
-                        Side::Black,
-                    );
-                    self.get_pieces_linear_moves(
-                        &mut available_moves,
-                        (x, y + 1),
-                        (0, 1),
-                        Side::Black,
-                    );
-                    self.get_pieces_linear_moves(
-                        &mut available_moves,
-                        (x, y - 1),
-                        (0, -1),
-                        Side::Black,
+                        start,
+                        multiplier,
+                        piece.side,
                     );
                 }
-                Side::White => {
+            }
+            PieceType::Bishop => {
+                let moves = [
+                    ((x + 1, y + 1), (1, 1)),
+                    ((x + 1, y - 1), (1, -1)),
+                    ((x - 1, y + 1), (-1, 1)),
+                    ((x - 1, y - 1), (-1, -1)),
+                ];
+
+                for (start, multiplier) in moves {
                     self.get_pieces_linear_moves(
                         &mut available_moves,
-                        (x + 1, y),
-                        (1, 0),
-                        Side::White,
-                    );
-                    self.get_pieces_linear_moves(
-                        &mut available_moves,
-                        (x - 1, y),
-                        (-1, 0),
-                        Side::White,
-                    );
-                    self.get_pieces_linear_moves(
-                        &mut available_moves,
-                        (x, y + 1),
-                        (0, 1),
-                        Side::White,
-                    );
-                    self.get_pieces_linear_moves(
-                        &mut available_moves,
-                        (x, y - 1),
-                        (0, -1),
-                        Side::White,
+                        start,
+                        multiplier,
+                        piece.side,
                     );
                 }
-            },
-            PieceType::Bishop => match piece.side {
-                Side::Black => {
+            }
+            PieceType::Queen => {
+                let moves = [
+                    ((x + 1, y + 1), (1, 1)),
+                    ((x + 1, y - 1), (1, -1)),
+                    ((x - 1, y + 1), (-1, 1)),
+                    ((x - 1, y - 1), (-1, -1)),
+                    ((x + 1, y), (1, 0)),
+                    ((x - 1, y), (-1, 0)),
+                    ((x, y + 1), (0, 1)),
+                    ((x, y - 1), (0, -1)),
+                ];
+
+                for (start, multiplier) in moves {
                     self.get_pieces_linear_moves(
                         &mut available_moves,
-                        (x + 1, y + 1),
-                        (1, 1),
-                        Side::Black,
-                    );
-                    self.get_pieces_linear_moves(
-                        &mut available_moves,
-                        (x + 1, y - 1),
-                        (1, -1),
-                        Side::Black,
-                    );
-                    self.get_pieces_linear_moves(
-                        &mut available_moves,
-                        (x - 1, y + 1),
-                        (-1, 1),
-                        Side::Black,
-                    );
-                    self.get_pieces_linear_moves(
-                        &mut available_moves,
-                        (x - 1, y - 1),
-                        (-1, -1),
-                        Side::Black,
+                        start,
+                        multiplier,
+                        piece.side,
                     );
                 }
-                Side::White => {
-                    self.get_pieces_linear_moves(
-                        &mut available_moves,
-                        (x + 1, y + 1),
-                        (1, 1),
-                        Side::White,
-                    );
-                    self.get_pieces_linear_moves(
-                        &mut available_moves,
-                        (x + 1, y - 1),
-                        (1, -1),
-                        Side::White,
-                    );
-                    self.get_pieces_linear_moves(
-                        &mut available_moves,
-                        (x - 1, y + 1),
-                        (-1, 1),
-                        Side::White,
-                    );
-                    self.get_pieces_linear_moves(
-                        &mut available_moves,
-                        (x - 1, y - 1),
-                        (-1, -1),
-                        Side::White,
-                    );
-                }
-            },
-            PieceType::Queen => match piece.side {
-                Side::Black => {
-                    self.get_pieces_linear_moves(
-                        &mut available_moves,
-                        (x + 1, y + 1),
-                        (1, 1),
-                        Side::Black,
-                    );
-                    self.get_pieces_linear_moves(
-                        &mut available_moves,
-                        (x + 1, y - 1),
-                        (1, -1),
-                        Side::Black,
-                    );
-                    self.get_pieces_linear_moves(
-                        &mut available_moves,
-                        (x - 1, y + 1),
-                        (-1, 1),
-                        Side::Black,
-                    );
-                    self.get_pieces_linear_moves(
-                        &mut available_moves,
-                        (x - 1, y - 1),
-                        (-1, -1),
-                        Side::Black,
-                    );
-                    self.get_pieces_linear_moves(
-                        &mut available_moves,
-                        (x + 1, y),
-                        (1, 0),
-                        Side::Black,
-                    );
-                    self.get_pieces_linear_moves(
-                        &mut available_moves,
-                        (x - 1, y),
-                        (-1, 0),
-                        Side::Black,
-                    );
-                    self.get_pieces_linear_moves(
-                        &mut available_moves,
-                        (x, y + 1),
-                        (0, 1),
-                        Side::Black,
-                    );
-                    self.get_pieces_linear_moves(
-                        &mut available_moves,
-                        (x, y - 1),
-                        (0, -1),
-                        Side::Black,
-                    );
-                }
-                Side::White => {
-                    self.get_pieces_linear_moves(
-                        &mut available_moves,
-                        (x + 1, y + 1),
-                        (1, 1),
-                        Side::White,
-                    );
-                    self.get_pieces_linear_moves(
-                        &mut available_moves,
-                        (x + 1, y - 1),
-                        (1, -1),
-                        Side::White,
-                    );
-                    self.get_pieces_linear_moves(
-                        &mut available_moves,
-                        (x - 1, y + 1),
-                        (-1, 1),
-                        Side::White,
-                    );
-                    self.get_pieces_linear_moves(
-                        &mut available_moves,
-                        (x - 1, y - 1),
-                        (-1, -1),
-                        Side::White,
-                    );
-                    self.get_pieces_linear_moves(
-                        &mut available_moves,
-                        (x + 1, y),
-                        (1, 0),
-                        Side::White,
-                    );
-                    self.get_pieces_linear_moves(
-                        &mut available_moves,
-                        (x - 1, y),
-                        (-1, 0),
-                        Side::White,
-                    );
-                    self.get_pieces_linear_moves(
-                        &mut available_moves,
-                        (x, y + 1),
-                        (0, 1),
-                        Side::White,
-                    );
-                    self.get_pieces_linear_moves(
-                        &mut available_moves,
-                        (x, y - 1),
-                        (0, -1),
-                        Side::White,
-                    );
-                }
-            },
-            PieceType::Knight => match piece.side {
-                Side::Black => {
-                    let coords = [
-                        (x - 1, y - 2),
-                        (x + 1, y - 2),
-                        (x + 2, y - 1),
-                        (x + 2, y + 1),
-                        (x + 2, y + 1),
-                        (x + 1, y + 2),
-                        (x - 1, y + 2),
-                        (x - 2, y + 1),
-                        (x - 2, y - 1),
-                    ];
-                    for coords in coords {
-                        if Self::is_tile_in_board(coords)
-                            && self.is_piece_on_coords(coords).1 != Some(Side::Black)
-                        {
-                            available_moves.push((coords.0 as usize, coords.1 as usize));
-                        }
+            }
+            PieceType::Knight => {
+                let coords = [
+                    (x - 1, y - 2),
+                    (x + 1, y - 2),
+                    (x + 2, y - 1),
+                    (x + 2, y + 1),
+                    (x + 2, y + 1),
+                    (x + 1, y + 2),
+                    (x - 1, y + 2),
+                    (x - 2, y + 1),
+                    (x - 2, y - 1),
+                ];
+                for coords in coords {
+                    if Self::is_tile_in_board(coords)
+                        && self.is_piece_on_coords(coords).1 != Some(piece.side)
+                    {
+                        available_moves.push((coords.0 as usize, coords.1 as usize));
                     }
                 }
-                Side::White => {
-                    let coords = [
-                        (x - 1, y - 2),
-                        (x + 1, y - 2),
-                        (x + 2, y - 1),
-                        (x + 2, y + 1),
-                        (x + 2, y + 1),
-                        (x + 1, y + 2),
-                        (x - 1, y + 2),
-                        (x - 2, y + 1),
-                        (x - 2, y - 1),
-                    ];
-                    for coords in coords {
-                        if Self::is_tile_in_board(coords)
-                            && self.is_piece_on_coords(coords).1 != Some(Side::White)
-                        {
-                            available_moves.push((coords.0 as usize, coords.1 as usize));
-                        }
-                    }
-                }
-            },
+            }
             PieceType::King => {
                 let coords_around_king = [
                     (x + 1, y),
@@ -826,71 +637,43 @@ impl Game {
                     (x, y - 1),
                     (x + 1, y - 1),
                 ];
-                match piece.side {
-                    Side::Black => {
-                        let mut enemy_king_coords = None;
-                        for (king_x, king_y, tile) in self.tiles_iter() {
-                            match tile.piece {
-                                Some(piece) => {
-                                    if piece.kind == PieceType::King && piece.side == Side::White {
-                                        enemy_king_coords = Some((king_x, king_y));
-                                        break;
-                                    }
-                                }
-                                None => {}
-                            }
-                        }
+                let mut enemy_king_coords = None;
 
-                        match enemy_king_coords {
-                            Some(enemy_king_coords) => {
-                                for coords in coords_around_king {
-                                    if Self::is_tile_in_board(coords)
-                                        && Self::get_distance_between_direct_coords(
-                                            (coords.0 as usize, coords.1 as usize),
-                                            enemy_king_coords,
-                                        ) > 1
-                                        && self.is_piece_on_coords(coords).1 != Some(Side::Black)
-                                    {
-                                        available_moves
-                                            .push((coords.0 as usize, coords.1 as usize));
-                                    }
-                                }
+                for (king_x, king_y, tile) in self.tiles_iter() {
+                    let piece = if let Some(p) = tile.piece {
+                        p
+                    } else {
+                        continue;
+                    };
+
+                    if piece.kind == PieceType::King
+                        && piece.side
+                            == if piece.side == Side::White {
+                                Side::Black
+                            } else {
+                                Side::White
                             }
-                            None => {}
+                    {
+                        enemy_king_coords = Some((king_x, king_y));
+                        break;
+                    }
+                }
+
+                match enemy_king_coords {
+                    Some(enemy_king_coords) => {
+                        for coords in coords_around_king {
+                            if Self::is_tile_in_board(coords)
+                                && Self::get_distance_between_direct_coords(
+                                    (coords.0 as usize, coords.1 as usize),
+                                    enemy_king_coords,
+                                ) > 1
+                                && self.is_piece_on_coords(coords).1 != Some(piece.side)
+                            {
+                                available_moves.push((coords.0 as usize, coords.1 as usize));
+                            }
                         }
                     }
-                    Side::White => {
-                        let mut enemy_king_coords = None;
-                        for (king_x, king_y, tile) in self.tiles_iter() {
-                            match tile.piece {
-                                Some(piece) => {
-                                    if piece.kind == PieceType::King && piece.side == Side::Black {
-                                        enemy_king_coords = Some((king_x, king_y));
-                                        break;
-                                    }
-                                }
-                                None => {}
-                            }
-                        }
-
-                        match enemy_king_coords {
-                            Some(enemy_king_coords) => {
-                                for coords in coords_around_king {
-                                    if Self::is_tile_in_board(coords)
-                                        && Self::get_distance_between_direct_coords(
-                                            (coords.0 as usize, coords.1 as usize),
-                                            enemy_king_coords,
-                                        ) > 1
-                                        && self.is_piece_on_coords(coords).1 != Some(Side::White)
-                                    {
-                                        available_moves
-                                            .push((coords.0 as usize, coords.1 as usize));
-                                    }
-                                }
-                            }
-                            None => {}
-                        }
-                    }
+                    None => {}
                 }
             }
         }
@@ -908,13 +691,11 @@ impl Game {
             let board_copy = self.tiles.clone();
             self.tiles[move_y][move_x].piece = self.tiles[y as usize][x as usize].piece;
             self.tiles[y as usize][x as usize].piece = None;
-            if !self.is_check(self.get_side_on_move(), self.tiles) {
+            if !self.is_check(self.get_side_on_move()) {
                 available_moves.push((move_x, move_y));
             }
             self.tiles = board_copy;
         }
-
-        println!("{:?}", available_moves);
 
         available_moves
     }
